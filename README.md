@@ -7,5 +7,5 @@ This repository contains the numerical illustrations published in the following 
     https://doi.org/10.1142/S0218202522500099 .\
 
 Libraries needed to run the examples:
-  - NURBS package: https://octave.sourceforge.io/nurbs/
-  - GeoPDEs 3.2.2: http://rafavzqz.github.io/geopdes/
+  - NURBS package: [https://octave.sourceforge.io/nurbs/](https://sourceforge.net/p/octave/nurbs/)
+  - GeoPDEs 3.2.2: [http://rafavzqz.github.io/geopdes/](http://rafavzqz.github.io/geopdes/)
