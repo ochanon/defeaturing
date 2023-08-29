@@ -2,7 +2,7 @@ clear
 close all
 clc
 
-eps_values = 1e-2 ./ 2.^(0:6); % 0.1 % 1e-2
+eps_values = 1e-2 ./ 2.^(0:6);
 filename = 'results/test17_drchlt0';
 saveIt = false;
 plotIt = true;

@@ -62,7 +62,7 @@ if plotIt
     fig = figure;
     loglog(eps_values, errh1s, '+-r', eps_values, errh1s_interface, '+-.r', eps_values, est, '+-b', eps_values, eps_values*18, 'k:');
     grid on
-    legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon', 'Location', 'northwest')
+    legend('|u-u_0|_{1,\Omega}', '\int_\gamma d_\gamma (u-u_0)', 'Estimator', '\epsilon', 'Location', 'northwest')
     if saveIt
         saveas(fig, filename, 'epsc');
     end
