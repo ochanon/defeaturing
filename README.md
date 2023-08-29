@@ -8,8 +8,8 @@ This repository contains the numerical illustrations published in the following 
 
 
 Libraries needed to run the examples:
-  - NURBS package: https://octave.sourceforge.io/nurbs/
-  - GeoPDEs 3.2.2: http://rafavzqz.github.io/geopdes/
+  - NURBS package: [https://octave.sourceforge.io/nurbs/](https://gnu-octave.github.io/packages/nurbs/)
+  - GeoPDEs 3.2.2: [http://rafavzqz.github.io/geopdes/](http://rafavzqz.github.io/geopdes/)
   
 
 
