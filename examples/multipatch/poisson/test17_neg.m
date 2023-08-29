@@ -2,38 +2,46 @@ clear
 close all
 clc
 
-eps_values = 1e-2 ./ 2.^(0:6);
-filename = 'results/test17_drchlt0';
+%% Set problem data
+% -- To reproduce [BCV2022], Section 6.1.1, geometry \Omega_s --
+%  * Case r_s = 5e-2
+half_side_length_of_squared_feature = 5 * 1e-2;
+
+% -- To study the convergence with respect to the size of the feature --
+% half_side_length_of_squared_feature = 1e-2 ./ 2.^(1:7);
+
+side_lengths = 2 * half_side_length_of_squared_feature;
+filename = 'results/test17_neg';
 saveIt = false;
 plotIt = true;
 
 problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.g = @(x, y, ind) zeros(size(x));
-problem_data.f = @(x, y) ones(size(x)); % myf(x, y); % 
+problem_data.f = @(x, y) ones(size(x));
 problem_data.h = @(x, y, ind) zeros(size(x));
 [problem_data, problem_data_0] = determineBC(problem_data);
-ext = 4;
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
 method_data.nsub = [16 16];
 method_data.nquad = [5 5];
 
-%%
-nn = numel(eps_values);
-errh1s = zeros(1,nn);
-errh1s_interface = zeros(1,nn);
-est = zeros(1,nn);
-meas_gamma = zeros(1,nn);
-normu = zeros(1,nn);
-errh1s_rel = zeros(1,nn);
 
-for ii = 1:nn
-    epsilon = eps_values(ii);
-    fprintf('----- epsilon = %f -----\n', epsilon);
+%% Main
+number_of_side_lengths = numel(side_lengths);
+error_h1s = zeros(1, number_of_side_lengths);
+error_h1s_from_interface = zeros(1, number_of_side_lengths);
+estimator = zeros(1, number_of_side_lengths);
+measure_of_gamma = zeros(1, number_of_side_lengths);
+norm_of_u = zeros(1, number_of_side_lengths);
+relative_error_h1s = zeros(1, number_of_side_lengths);
+
+for iter = 1:number_of_side_lengths
+    side = side_lengths(iter);
+    fprintf('----- side length = %f -----\n', side);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F] = buildGeometry(epsilon, ext);
+    [srf_0, srf, srf_F] = buildGeometry(side);
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
     
@@ -44,25 +52,26 @@ for ii = 1:nn
     [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
     
     % 4) COMPUTE ERROR AND ESTIMATOR
-    errh1s(ii) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
-    normu(ii) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
-    errh1s_rel(ii) = errh1s(ii)/normu(ii);
-%     [est(ii), meas_gamma(ii), errh1s_interface(ii)] = ...
-%         est_negative(space_0, u_0, problem_data.gamma_sides, problem_data_0.omega_patches, problem_data.g, msh, space, u);
+    error_h1s(iter) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
+    norm_of_u(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
+    relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
 
-    [est(ii), meas_gamma(ii), errh1s_interface(ii)] = ...
-        est_negative_v2(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
+    [estimator(iter), measure_of_gamma(iter), error_h1s_from_interface(iter)] = ...
+        est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
 end
 
-%%
+
+%% Display and save the results
 if saveIt
-    save(filename, 'eps_values', 'errh1s', 'errh1s_interface', 'est', 'meas_gamma', 'normu', 'errh1s_rel')
+    save(filename, 'side_lengths', 'error_h1s', 'error_h1s_from_interface', ...
+        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
 end
 if plotIt
     fig = figure;
-    loglog(eps_values, errh1s, '+-r', eps_values, est, '+-b', eps_values, eps_values.^2*2, 'k:');
+    loglog(side_lengths, error_h1s, '+-r', side_lengths, estimator, '+-b', ...
+           side_lengths, side_lengths.^2*2, 'k:');
     grid on
     legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^2', 'Location', 'northwest')
     if saveIt
@@ -70,10 +79,19 @@ if plotIt
     end
 end
 
-%%
-function [srf_0, srf, srf_F] = buildGeometry(epsilon, ext)
-    L = epsilon/2;
+fprintf('For half_side_length_of_squared_feature = %e, \n', half_side_length_of_squared_feature(end))
+fprintf('    * Estimator                                      = %e \n', estimator(end))
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}            = %e \n', error_h1s(end))
+fprintf('    * Relative error |u-u_0|_{1,Omega}/|u|_{1,Omega} = %e \n', relative_error_h1s(end))
+fprintf('    * Effectivity index                              = %f \n', estimator(end)/error_h1s(end))
+
+
+%% Auxiliary functions
+function [srf_0, srf, srf_F] = buildGeometry(side_length)
+    L = side_length/2;
+    extension_factor = 4;
     tol = 0.1;
+
     srf_0(1) = nrbruled (nrbcirc(tol, [0 0], pi/4, 3*pi/4), nrbcirc(1, [0 0], pi/4, 3*pi/4));
     srf_0(2) = nrbtform(srf_0(1), vecrotz(pi/2));
     srf_0(3) = nrbtform(srf_0(2), vecrotz(pi/2));
@@ -84,15 +102,15 @@ function [srf_0, srf, srf_F] = buildGeometry(epsilon, ext)
     srf_0(7) = nrbtform(srf_0(6), vecrotz(pi/2));
     srf_0(8) = nrbtform(srf_0(7), vecrotz(pi/2));
 
-    if ext*epsilon < 0.1
+    if extension_factor * side_length < 0.1
         for ii = 1:4
             srf_0(ii) = nrbkntins(srf_0(ii), {0.5, 0.5});
-            srf_0(ii+4) = nrbkntins(srf_0(ii+4), {0.5, ext*epsilon/0.1});
+            srf_0(ii+4) = nrbkntins(srf_0(ii+4), {0.5, extension_factor * side_length / 0.1});
         end
     else
         for ii = 1:4
-            srf_0(ii) = nrbkntins(srf_0(ii), {0.5, (ext*epsilon-0.1)/0.9});
-            srf_0(ii+4) = nrbkntins(srf_0(ii+4), {0.5, 0.5});
+            srf_0(ii) = nrbkntins(srf_0(ii), {0.5, (extension_factor * side_length - 0.1) / 0.9});
+            srf_0(ii+4) = nrbkntins(srf_0(ii + 4), {0.5, 0.5});
         end
     end
     srf_0(9) = nrbdegelev(nrb4surf([-L -L], [L, -L], [-L L], [L L]), [1 1]);
@@ -115,13 +133,6 @@ function [problem_data, problem_data_0] = determineBC(problem_data)
     problem_data_0.nmnn_sides = [];
     problem_data_0.drchlt_sides = 1:4;
     problem_data_0.omega_patches = 1:8;
-    problem_data_0.gamma_sides = cell(9,1); 
+    problem_data_0.gamma_sides = cell(9, 1); 
     problem_data_0.gamma_sides(5:8) = {3, 3, 3, 3}; % relative to each patch
-end
-
-function res = myf(x, y)
-    tol = 0.1;
-    r = sqrt(x.^2+y.^2);
-    res = ones(size(x));
-    res(r<=tol) = zeros(size(res(r<=tol)));
 end

@@ -3,10 +3,10 @@ close all
 clc
 
 %% Set problem data
-% -- To reproduce [BCV2022], Section 6.2.1, geometry \Omega_\varepsilon^1 --
+% -- To reproduce [BCV2022], Section 6.2.1, geometry \Omega_\varepsilon^2 --
 eps_values = 1e-2 ./ 2.^(0:6);
 
-filename = 'results/test16_neg';
+filename = 'results/test05_neg';
 saveIt = false;
 plotIt = true;
 
@@ -65,9 +65,10 @@ if saveIt
 end
 if plotIt
     fig = figure;
-    loglog(eps_values, error_h1s, '+-r', eps_values, estimator, '+-b', eps_values, eps_values, 'k:');
+    loglog(eps_values, error_h1s, '+-r', eps_values, estimator, '+-b', ...
+           eps_values, eps_values.^2*8, 'k:');
     grid on
-    legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon', 'Location', 'northwest')
+    legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^2', 'Location', 'northwest')
     if saveIt
         saveas(fig, filename, 'epsc');
     end
@@ -76,59 +77,38 @@ end
 
 %% Auxiliary functions
 function [srf_0, srf, srf_F] = buildGeometry(epsilon)
-    s = epsilon/(2*sqrt(2));
     extension_factor = 4;
 
-    srf_0(1) = nrbdegelev(nrbsquare([0.5-s, 1-s], 2*s, s), [1,1]);
-    srf_0(1) = nrbkntins(srf_0(1), {0.5, 0.5});
+    srf_0(1) = nrb4surf([0, 0], [1 - epsilon, 0], [0, 1 - epsilon], [1 - epsilon, 1 - epsilon]);
+    srf_0(1) = nrbkntins(srf_0(1), {(1 - extension_factor * epsilon / 2) / (1 - epsilon / 2), ...
+                                    (1 - extension_factor * epsilon / 2) / (1 - epsilon / 2)});
     
-    crv1 = nrbline([0.5-s, 1], [0.5-s, 1-s]);
-    crv2 = nrbcirc(epsilon, [0.5, 1], pi, 5*pi/4);
-    srf_0(2) = nrbdegelev(nrbruled(crv1, crv2), [0,1]);
-    srf_0(2) = nrbkntins(srf_0(2), {0.5, 0.5});
+    srf_0(2) = nrb4surf([1-epsilon, 0], [1, 0], [1 - epsilon, 1 - epsilon], [1, 1 - epsilon]); 
+    srf_0(2) = nrbkntins(srf_0(2), {0.5, (1 - extension_factor * epsilon / 2) / (1 - epsilon / 2)});
     
-    crv1 = nrbline([0.5-s, 1-s], [0.5+s, 1-s]);
-    crv2 = nrbcirc(epsilon, [0.5, 1], 5*pi/4, 7*pi/4);
-    srf_0(3) = nrbdegelev(nrbruled(crv1, crv2), [0,1]);
-    srf_0(3) = nrbkntins(srf_0(3), {0.5, 0.5});
+    srf_0(3) = nrb4surf([0, 1 - epsilon], [1 - epsilon, 1 - epsilon], [0, 1], [1 - epsilon, 1]);
+    srf_0(3) = nrbkntins(srf_0(3), {(1 - extension_factor * epsilon / 2) / (1 - epsilon / 2), 0.5});
     
-    crv1 = nrbline([0.5+s, 1-s], [0.5+s, 1]);
-    crv2 = nrbcirc(epsilon, [0.5, 1], -pi/4, 0);
-    srf_0(4) = nrbdegelev(nrbruled(crv1, crv2), [0,1]);
+    srf_0(4) = nrb4surf([1 - epsilon, 1 - epsilon], [1, 1 - epsilon], [1 - epsilon, 1], [1, 1]);
     srf_0(4) = nrbkntins(srf_0(4), {0.5, 0.5});
-    
-    crv1 = nrbcirc(epsilon, [0.5, 1], pi, 5*pi/4);
-    crv2 = nrbline([0, 1], [0, 0]);
-    srf_0(5) = nrbdegelev(nrbruled(crv1, crv2), [0,1]);
-    srf_0(5) = nrbkntins(srf_0(5), {0.5, (extension_factor - 1) * epsilon / (1 - epsilon)});
-    
-    crv1 = nrbcirc(epsilon, [0.5, 1], 5*pi/4, 7*pi/4);
-    crv2 = nrbline([0, 0], [1, 0]);
-    srf_0(6) = nrbdegelev(nrbruled(crv1, crv2), [0,1]);
-    srf_0(6) = nrbkntins(srf_0(6), {0.5, (extension_factor - 1) * epsilon / (1 - epsilon)});
-    
-    crv1 = nrbcirc(epsilon, [0.5, 1], -pi/4, 0);
-    crv2 = nrbline([1, 0], [1, 1]);
-    srf_0(7) = nrbdegelev(nrbruled(crv1, crv2), [0,1]);
-    srf_0(7) = nrbkntins(srf_0(7), {0.5, (extension_factor - 1) * epsilon / (1 - epsilon)});
-    
-    srf_F = srf_0(1:4);
-    srf = srf_0(5:7);
+
+    srf = srf_0(1:3);
+    srf_F = srf_0(4);
 end
 
 function [problem_data, problem_data_0] = determineBC(problem_data)
     problem_data_0 = problem_data;
     
-    % Exact problem
-    problem_data.nmnn_sides = [1 2 4 6 7];
-    problem_data.drchlt_sides = [3 5 8];
-    problem_data.gamma_sides = [2 4 7];
-    problem_data.omega0_patches = 1:4;
+    % Inner (exact) problem
+    problem_data.nmnn_sides = [1 3 5 6 7 8];
+    problem_data.drchlt_sides = [2 4];
+    problem_data.gamma_sides = [5 7];
+    problem_data.omega0_patches = 1:3;
 
     % Simplified problem
-    problem_data_0.nmnn_sides = [1 2 3 4 7];
-    problem_data_0.drchlt_sides = [5 6 8];
-    problem_data_0.omega_patches = 5:7;
-    problem_data_0.gamma_sides = cell(7,1); 
-    problem_data_0.gamma_sides(5:7) = {3, 3, 3}; % relative to each patch
+    problem_data_0.nmnn_sides = [1 3 5 6 7 8];
+    problem_data_0.drchlt_sides = [2 4];
+    problem_data_0.omega_patches = 1:3;
+    problem_data_0.gamma_sides = cell(4, 1); 
+    problem_data_0.gamma_sides(2:3) = {4, 2}; % relative to each patch
 end

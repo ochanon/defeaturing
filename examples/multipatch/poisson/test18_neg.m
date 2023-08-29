@@ -2,8 +2,20 @@ clear
 close all
 clc
 
-eps_values = 1e-2 ./ 2.^(0:6); % sqrt(1e-2^2/pi); % sqrt(0.1^2/pi); % 2*0.1/pi;
-filename = 'results/test18_drchlt0';
+%% Set problem data
+% -- To reproduce [BCV2022], Section 6.1.1, geometry \Omega_c --
+%  * Case r_c = 6.37e−2:
+perimeter = 0.4;
+circle_radiuses = perimeter/(2*pi);
+
+%  * Case r_c = 5.64e−2:
+% area = 1e-2;
+% circle_radiuses = sqrt(area/pi);
+
+% -- To study the convergence with respect to the size of the feature --
+% circle_radiuses = 1e-2 ./ 2.^(0:6);
+
+filename = 'results/test18_neg';
 saveIt = false;
 plotIt = true;
 
@@ -12,28 +24,28 @@ problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) ones(size(x)); 
 problem_data.h = @(x, y, ind) zeros(size(x));
 [problem_data, problem_data_0] = determineBC(problem_data);
-ext = 4;
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
 method_data.nsub = [32 32];
 method_data.nquad = [5 5];
 
-%%
-nn = numel(eps_values);
-errh1s = zeros(1,nn);
-errh1s_interface = zeros(1,nn);
-est = zeros(1,nn);
-meas_gamma = zeros(1,nn);
-normu = zeros(1,nn);
-errh1s_rel = zeros(1,nn);
 
-for ii = 1:nn
-    epsilon = eps_values(ii);
-    fprintf('----- epsilon = %f -----\n', epsilon);
+%% Main
+number_of_circle_radiuses = numel(circle_radiuses);
+error_h1s = zeros(1, number_of_circle_radiuses);
+error_h1s_from_interface = zeros(1, number_of_circle_radiuses);
+estimator = zeros(1, number_of_circle_radiuses);
+measure_of_gamma = zeros(1, number_of_circle_radiuses);
+norm_of_u = zeros(1, number_of_circle_radiuses);
+relative_error_h1s = zeros(1, number_of_circle_radiuses);
+
+for iter = 1:number_of_circle_radiuses
+    radius = circle_radiuses(iter);
+    fprintf('----- circle radius = %f -----\n', radius);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F] = buildGeometry(epsilon, ext);
+    [srf_0, srf, srf_F] = buildGeometry(radius);
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
     
@@ -44,41 +56,51 @@ for ii = 1:nn
     [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
     
     % 4) COMPUTE ERROR AND ESTIMATOR
-    errh1s(ii) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
-    normu(ii) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
-    errh1s_rel(ii) = errh1s(ii)/normu(ii);
-%     [est(ii), meas_gamma(ii), errh1s_interface(ii)] = ...
-%         est_negative(space_0, u_0, problem_data.gamma_sides, problem_data_0.omega_patches, problem_data.g, msh, space, u);
+    error_h1s(iter) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
+    norm_of_u(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
+    relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
 
-    [est(ii), meas_gamma(ii), errh1s_interface(ii)] = ...
-        est_negative_v2(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
+    [estimator(iter), measure_of_gamma(iter), error_h1s_from_interface(iter)] = ...
+        est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
 end
 
-%%
+
+%% Display and save the results
 if saveIt
-    save(filename, 'eps_values', 'errh1s', 'errh1s_interface', 'est', 'meas_gamma', 'normu', 'errh1s_rel')
+    save(filename, 'circle_radiuses', 'error_h1s', 'error_h1s_from_interface', ...
+        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
 end
 if plotIt
     fig = figure;
-    loglog(eps_values, errh1s, '+-r', eps_values, est, '+-b', eps_values, eps_values.^2.*abs(log(eps_values))*0.8, 'k:', eps_values, eps_values.^2*5, 'k.-');
+    loglog(circle_radiuses, error_h1s, '+-r', circle_radiuses, estimator, '+-b', ...
+           circle_radiuses, circle_radiuses.^2.*abs(log(circle_radiuses))*0.8, 'k:');
     grid on
-    legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^2 log(\epsilon)', '\epsilon^2',  'Location', 'northwest')
+    legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^2 log(\epsilon)', 'Location', 'northwest')
     if saveIt
         saveas(fig, filename, 'epsc');
     end
 end
 
-%%
-function [srf_0, srf, srf_F] = buildGeometry(epsilon, ext)
-    L = sqrt(2)*epsilon/4;
+fprintf('For circle_radius = %e, \n', circle_radiuses(end))
+fprintf('    * Estimator                                      = %e \n', estimator(end))
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}            = %e \n', error_h1s(end))
+fprintf('    * Relative error |u-u_0|_{1,Omega}/|u|_{1,Omega} = %e \n', relative_error_h1s(end))
+fprintf('    * Effectivity index                              = %f \n', estimator(end)/error_h1s(end))
+
+
+%% Auxiliary functions
+function [srf_0, srf, srf_F] = buildGeometry(epsilon)
+    L = sqrt(2) * epsilon / 4;
+    extension_factor = 4;
+
     srf_0(1) = nrbruled (nrbcirc(epsilon, [0 0], pi/4, 3*pi/4), nrbcirc(1, [0 0], pi/4, 3*pi/4));
     srf_0(2) = nrbtform(srf_0(1), vecrotz(pi/2));
     srf_0(3) = nrbtform(srf_0(2), vecrotz(pi/2));
     srf_0(4) = nrbtform(srf_0(3), vecrotz(pi/2));
     for ii = 1:4
-        srf_0(ii) = nrbkntins(srf_0(ii), {0.5, (ext-1)*epsilon/(1-epsilon)});
+        srf_0(ii) = nrbkntins(srf_0(ii), {0.5, (extension_factor-1) * epsilon / (1-epsilon)});
     end
     srf_0(5) = nrbruled (nrbline([L L], [-L L]), nrbcirc(epsilon, [0 0], pi/4, 3*pi/4));
     srf_0(6) = nrbtform(srf_0(5), vecrotz(pi/2));
@@ -107,6 +129,6 @@ function [problem_data, problem_data_0] = determineBC(problem_data)
     problem_data_0.nmnn_sides = [];
     problem_data_0.drchlt_sides = 1:4;
     problem_data_0.omega_patches = 1:4;
-    problem_data_0.gamma_sides = cell(9,1); 
+    problem_data_0.gamma_sides = cell(9, 1); 
     problem_data_0.gamma_sides(1:4) = {3, 3, 3, 3}; % relative to each patch
 end
