@@ -4,9 +4,9 @@ This repository contains the numerical illustrations published in the following 
 - [BCV2022] "Analysis-aware defeaturing: Problem setting and _a posteriori_ estimation"\
     &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;by Annalisa Buffa, Ondine Chanon and Rafael Vázquez\
     &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;in _Mathematical Models and Methods in Applied Sciences_, 32(02), 359-402 (2022).\
-    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Journal article: [https://doi.org/10.1142/S0218202522500099/](https://doi.org/10.1142/S0218202522500099/)\
-        &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;arXiv (Open Access): [https://doi.org/10.48550/arXiv.2007.11525/](
-https://doi.org/10.48550/arXiv.2007.11525/)
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Journal article: [https://doi.org/10.1142/S0218202522500099](https://doi.org/10.1142/S0218202522500099)\
+        &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;arXiv (Open Access): [https://doi.org/10.48550/arXiv.2007.11525](
+https://doi.org/10.48550/arXiv.2007.11525)
 
 
 Libraries needed to run the examples:
