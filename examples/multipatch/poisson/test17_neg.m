@@ -4,11 +4,13 @@ clc
 
 %% Set problem data
 % -- To reproduce [BCV2022], Section 6.1.1, geometry \Omega_s --
-%  * Case r_s = 5e-2
+%  * Case r_s = 5e-2:
 half_side_length_of_squared_feature = 5 * 1e-2;
+% --
 
 % -- To study the convergence with respect to the size of the feature --
 % half_side_length_of_squared_feature = 1e-2 ./ 2.^(1:7);
+% --
 
 side_lengths = 2 * half_side_length_of_squared_feature;
 filename = 'results/test17_neg';

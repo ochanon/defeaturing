@@ -2,8 +2,9 @@ clear
 close all
 clc
 
+% -- Test reproducing [BCV2022], Section 6.2.2, geometry \Omega_\varepsilon^4 --
+
 %% Set problem data
-% -- To reproduce [BCV2022], Section 6.2.2, geometry \Omega_\varepsilon^4 --
 eps_values = 1e-2 ./ 2.^(0:6);
 
 filename = 'results/test32_pos';

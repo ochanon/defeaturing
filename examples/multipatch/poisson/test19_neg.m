@@ -4,17 +4,19 @@ clc
 
 %% Set problem data
 number_of_star_branches = 10;
-% Note: interior_radius = perimeter / (2 * number_of_star_branches * sqrt(5 - 4 * cos(pi / number_of_star_branches)))
+% Note: interior_radius = perimeter / (2 * number_of_star_branches 
+%                                      * sqrt(5 - 4 * cos(pi / number_of_star_branches)))
 
 % -- To reproduce [BCV2022], Section 6.1.1, geometry \Omega_* --
-%  * Case r_* = 1.83e−2
+%  * Case r_* = 1.83e−2, uncomment the line below:
 % perimeters = 0.4;
-
-%  * Case r_* = 4.02e−2
+%  * Case r_* = 4.02e−2, uncomment the line below:
 perimeters = 0.88;
+% --
 
 % -- To study the convergence with respect to the size of the feature --
 % perimeters = 1e-2 ./ 2.^(-5:3);
+% --
 
 interior_radiuses = perimeters / (2 * number_of_star_branches * sqrt(5 - 4 * cos(pi / number_of_star_branches)));
 filename = 'results/test19_neg';

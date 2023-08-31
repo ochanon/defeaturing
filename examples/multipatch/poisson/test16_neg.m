@@ -2,8 +2,9 @@ clear
 close all
 clc
 
+% -- Test reproducing [BCV2022], Section 6.2.1, geometry \Omega_\varepsilon^1 --
+
 %% Set problem data
-% -- To reproduce [BCV2022], Section 6.2.1, geometry \Omega_\varepsilon^1 --
 eps_values = 1e-2 ./ 2.^(0:6);
 
 filename = 'results/test16_neg';

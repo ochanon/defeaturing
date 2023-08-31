@@ -4,23 +4,31 @@ clc
 
 %% Set problem data
 % -- To reproduce [BCV2022], Section 6.1.1, geometry \Omega_c --
-%  * Case r_c = 6.37e−2:
-perimeter = 0.4;
-circle_radiuses = perimeter/(2*pi);
-
-%  * Case r_c = 5.64e−2:
+%  * Case r_c = 6.37e−2, uncomment the three lines below:
+% perimeter = 0.4;
+% circle_radiuses = perimeter/(2*pi);
+% neumann_function = @(x, y, ind, radius) zeros(size(x));
+% --
+%  * Case r_c = 5.64e−2, uncomment the three lines below:
 % area = 1e-2;
 % circle_radiuses = sqrt(area/pi);
+% neumann_function = @(x, y, ind, radius) zeros(size(x));
+% --
 
-% -- To study the convergence with respect to the size of the feature --
-% circle_radiuses = 1e-2 ./ 2.^(0:6);
+% -- To reproduce [BCV2022], Section 6.2.3, geometry \Omega_\varepsilon --
+circle_radiuses = 1e-2 ./ 2.^(0:6);
+g1 = @(x, y, ind, radius) zeros(size(x));
+g2 = @(x, y, ind, radius) ones(size(x));
+g3 = @(x, y, ind, radius) ones(size(x)) ./ radius;
+g4 = @(x, y, ind, radius) ones(size(x)) ./ (radius.^3);
+neumann_function = g4; % Choose here the required Neumann data g1, g2, g3 or g4
+% --
 
 filename = 'results/test18_neg';
 saveIt = false;
 plotIt = true;
 
 problem_data.c_diff = @(x, y) ones(size(x));
-problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) ones(size(x)); 
 problem_data.h = @(x, y, ind) zeros(size(x));
 [problem_data, problem_data_0] = determineBC(problem_data);
@@ -43,6 +51,7 @@ relative_error_h1s = zeros(1, number_of_circle_radiuses);
 for iter = 1:number_of_circle_radiuses
     radius = circle_radiuses(iter);
     fprintf('----- circle radius = %f -----\n', radius);
+    problem_data.g = @(x, y, ind) neumann_function(x, y, ind, radius);
     
     % 1) BUILD GEOMETRY
     [srf_0, srf, srf_F] = buildGeometry(radius);
@@ -74,10 +83,9 @@ if saveIt
 end
 if plotIt
     fig = figure;
-    loglog(circle_radiuses, error_h1s, '+-r', circle_radiuses, estimator, '+-b', ...
-           circle_radiuses, circle_radiuses.^2.*abs(log(circle_radiuses))*0.8, 'k:');
+    loglog(circle_radiuses, error_h1s, '+-r', circle_radiuses, estimator, '+-b');
     grid on
-    legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^2 log(\epsilon)', 'Location', 'northwest')
+    legend('|u-u_0|_{1,\Omega}', 'Estimator', 'Location', 'northwest')
     if saveIt
         saveas(fig, filename, 'epsc');
     end

@@ -1,21 +1,29 @@
 # Analysis-aware defeaturing
 
-This repository contains the numerical illustrations published in the following papers (and some more):
+This repository contains most of the numerical illustrations presented in the following articles (and some more):
 - [BCV2022] "Analysis-aware defeaturing: Problem setting and _a posteriori_ estimation"\
     &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;by Annalisa Buffa, Ondine Chanon and Rafael Vázquez\
     &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;in _Mathematical Models and Methods in Applied Sciences_, 32(02), 359-402 (2022).\
-    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Journal article: [https://doi.org/10.1142/S0218202522500099/](https://doi.org/10.1142/S0218202522500099/)\
-        &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;arXiv (Open Access): [https://doi.org/10.48550/arXiv.2007.11525/](
-https://doi.org/10.48550/arXiv.2007.11525/)
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Journal article: [https://doi.org/10.1142/S0218202522500099](https://doi.org/10.1142/S0218202522500099)\
+        &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;arXiv (Open Access): [https://doi.org/10.48550/arXiv.2007.11525](
+https://doi.org/10.48550/arXiv.2007.11525)
+- [AC2023+] "Analysis-aware defeaturing of complex geometries with Neumann features"\
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;by Pablo Antolín and Ondine Chanon\
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Under review for publication.\
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;arXiv (Open Access): [https://doi.org/10.48550/arXiv.2212.03141](https://doi.org/10.48550/arXiv.2212.03141)
 
 
-Libraries needed to run the examples:
-  - NURBS package: [https://octave.sourceforge.io/nurbs/](https://gnu-octave.github.io/packages/nurbs/)
-  - GeoPDEs 3.2.2: [http://rafavzqz.github.io/geopdes/](http://rafavzqz.github.io/geopdes/)
+## Instructions to run the numerical examples
+
+1. Install Matlab.
+2. Add the following libraries to your Matlab path:
+    - NURBS package: [https://octave.sourceforge.io/nurbs/](https://gnu-octave.github.io/packages/nurbs/)
+    - GeoPDEs 3.2.2: [http://rafavzqz.github.io/geopdes/](http://rafavzqz.github.io/geopdes/)
+    - this git repository.
+3. Run the examples in the `examples/` folder.
   
 
-
-## Tests and considered geometries:
+## Tests and considered geometries
 
 ### **test01**: 
 * 1 positive feature, 2D
@@ -24,7 +32,7 @@ Libraries needed to run the examples:
 
 
 ### **test02**: 
-* 1 positive feature, 2D\
+* 1 positive feature, 2D
 * [BCV2022], Section 6.2.1 where $\Omega = \Omega^4_\varepsilon$
 
 ![test02](images/test02_pos.png)
@@ -44,17 +52,26 @@ Libraries needed to run the examples:
 
 
 ### **test06**:
-* 1 negative feature and 1 positive feature, 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^5_\varepsilon$
+* 1 complex feature (with a negative and a positive components), 2D
+* [BCV2022], Section 6.2.1 where $\Omega = \Omega^6_\varepsilon$
+* [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta < 0$
 
-![test06](images/test06_neg_pos.png)
+![test06](images/test06_complex.png)
 
 
 ### **test07**:
 * 1 complex feature (with a negative and a positive components), 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^6_\varepsilon$
+* [BCV2022], Section 6.2.1 where $\Omega = \Omega^5_\varepsilon$
+* [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta = 0$
 
 ![test07](images/test07_complex.png)
+
+
+### **test08**:
+* 2 features (1 negative and 1 positive), 2D
+* [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta > 0$
+
+![test08](images/test08_neg_pos.png)
 
 
 ### **test16**:
@@ -74,6 +91,7 @@ Libraries needed to run the examples:
 ### **test18**: 
 * 1 negative feature, 2D
 * [BCV2022], Section 6.1.1 where $\Omega = \Omega_c$
+* [BCV2022], Section 6.2.3 where $\Omega = \Omega_\varepsilon$
 
 ![test18](images/test18_neg.png)
 
@@ -86,35 +104,35 @@ Libraries needed to run the examples:
 
 
 ### **test21**: 
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^3_\varepsilon$
 * 1 positive feature, 2D
+* [BCV2022], Section 6.2.1 where $\Omega = \Omega^3_\varepsilon$
 
 ![test21](images/test21_pos.png)
 
 
 ### **test30**: 
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^1_\varepsilon$
 * 1 negative feature, 3D
+* [BCV2022], Section 6.2.2 where $\Omega = \Omega^1_\varepsilon$
 
 ![test30](images/test30_neg.png)
 
 
 ### **test31**:
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^3_\varepsilon$
 * 1 positive feature, 3D
+* [BCV2022], Section 6.2.2 where $\Omega = \Omega^3_\varepsilon$
 
 ![test31](images/test31_pos.png)
 
 
 ### **test32**:
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^4_\varepsilon$
 * 1 positive feature, 3D
+* [BCV2022], Section 6.2.2 where $\Omega = \Omega^4_\varepsilon$
 
 ![test32](images/test32_pos.png)
 
 
 ### **test35**:
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^2_\varepsilon$
 * 1 negative feature, 3D
+* [BCV2022], Section 6.2.2 where $\Omega = \Omega^2_\varepsilon$
 
 ![test35](images/test35_neg.png)
