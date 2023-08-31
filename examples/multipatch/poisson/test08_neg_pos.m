@@ -15,7 +15,6 @@ feature_side_length = 0.1;
 
 filename = 'results/test08_neg_pos';
 saveIt = false;
-plotIt = true;
 
 problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.g = @(x, y, ind) zeros(size(x));

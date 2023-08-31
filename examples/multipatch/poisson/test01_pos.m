@@ -26,7 +26,7 @@ number_of_epsilons = numel(eps_values);
 error_h1s = zeros(1, number_of_epsilons);
 error_h1s_0 = zeros(1, number_of_epsilons);
 error_h1s_F = zeros(1, number_of_epsilons);
-error_h1s_from_interface = zeros(1, number_of_epsilons);
+error_h1s_from_boundary = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
 norm_of_u = zeros(1, number_of_epsilons);
 relative_error_h1s = zeros(1, number_of_epsilons);
@@ -58,7 +58,7 @@ for iter = 1:number_of_epsilons
         msh_0, space_0, zeros(size(u_0)), msh_F, space_F, zeros(size(u_0tilde)), problem_data.omega0_patches);
     relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
     
-    [estimator(iter), measure_of_gamma(iter), ~, error_h1s_from_interface(iter)] = ...
+    [estimator(iter), measure_of_gamma(iter), ~, error_h1s_from_boundary(iter)] = ...
         est_positive(msh_F, space_F, u_0tilde, problem_data_F.gamma0_sides, problem_data_F.gammae_sides,...
         problem_data_0.g, problem_data.g, problem_data_F.F_patches, problem_data.omega0_patches, space, u);      
 end
@@ -67,7 +67,7 @@ end
 %% Display and save the results
 if saveIt
     save(filename, 'eps_values', 'error_h1s', 'error_h1s_0', 'error_h1s_F', ...
-        'error_h1s_from_interface', 'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
+        'error_h1s_from_boundary', 'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
 end
 if plotIt
     fig = figure;

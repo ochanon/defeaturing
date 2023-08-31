@@ -7,7 +7,7 @@ clc
 %% Set problem data
 eps_values = 1e-2 ./ 2.^(0:6);
 
-filename = 'results/test35_neg';
+filename = 'results/test33_neg';
 saveIt = false;
 plotIt = true;
 
@@ -26,7 +26,7 @@ method_data.nquad = [5 5 5];
 %% Main
 number_of_epsilons = numel(eps_values);
 error_h1s = zeros(1, number_of_epsilons);
-error_h1s_from_interface = zeros(1, number_of_epsilons);
+error_h1s_from_boundary = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
 measure_of_gamma = zeros(1, number_of_epsilons);
 
@@ -50,7 +50,7 @@ for iter = 1:number_of_epsilons
     normu(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
     errh1s_rel(iter) = error_h1s(iter)/normu(iter);
 
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_interface(iter)] = ...
+    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
@@ -59,7 +59,7 @@ end
 
 %% Display and save the results
 if saveIt
-    save(filename, 'eps_values', 'error_h1s', 'error_h1s_from_interface', ...
+    save(filename, 'eps_values', 'error_h1s', 'error_h1s_from_boundary', ...
         'estimator', 'measure_of_gamma', 'normu', 'errh1s_rel')
 end
 if plotIt

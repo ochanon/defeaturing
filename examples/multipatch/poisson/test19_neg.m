@@ -38,7 +38,7 @@ method_data.nquad = [5 5];
 %% Main
 number_of_interior_radiuses = numel(interior_radiuses);
 error_h1s = zeros(1, number_of_interior_radiuses);
-error_h1s_from_interface = zeros(1, number_of_interior_radiuses);
+error_h1s_from_boundary = zeros(1, number_of_interior_radiuses);
 estimator = zeros(1, number_of_interior_radiuses);
 measure_of_gamma = zeros(1, number_of_interior_radiuses);
 norm_of_u = zeros(1, number_of_interior_radiuses);
@@ -64,7 +64,7 @@ for iter = 1:number_of_interior_radiuses
     norm_of_u(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
     relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
 
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_interface(iter)] = ...
+    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
@@ -73,7 +73,7 @@ end
 
 %% Display and save the results
 if saveIt
-    save(filename, 'interior_radiuses', 'error_h1s', 'error_h1s_from_interface', ...
+    save(filename, 'interior_radiuses', 'error_h1s', 'error_h1s_from_boundary', ...
         'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
 end
 if plotIt

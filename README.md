@@ -26,113 +26,156 @@ https://doi.org/10.48550/arXiv.2007.11525)
 ## Tests and considered geometries
 
 ### **test01**: 
-* 1 positive feature, 2D
+* 1 positive feature, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
 
 ![test01](images/test01_pos.png)
 
 
 ### **test02**: 
-* 1 positive feature, 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^4_\varepsilon$
+* 1 positive feature, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.1 where $\Omega = \Omega^4_\varepsilon$.
 
 ![test02](images/test02_pos.png)
 
 
-### **test04**: 
-* 1 negative feature, 2D
+### **test03**: 
+* 1 positive feature with different feature extensions, 2D.
+* Study of the impact of the choice of the positive feature extension $\tilde F$ on the defeaturing error estimator.
+    * [BCV2022], Section 6.3.2.
 
-![test05](images/test04_neg.png)
+![test03](images/test03_pos.png)
+![test03_feature_extensions](images/test03_feature_extensions.png)
+
+
+### **test04**: 
+* 1 negative feature, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+
+![test04](images/test04_neg.png)
 
 
 ### **test05**:
-* 1 negative feature, 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^2_\varepsilon$
+* 1 negative feature, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.1 where $\Omega = \Omega^2_\varepsilon$.
 
 ![test05](images/test05_neg.png)
 
 
 ### **test06**:
 * 1 complex feature (with a negative and a positive components), 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^6_\varepsilon$
-* [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta < 0$
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.1 where $\Omega = \Omega^6_\varepsilon$.
+* Test to prove that the features' separability condition is weak, in the context of a geometry with multiple features (see also **test07** and **test08**).
+    * [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta < 0$.
 
 ![test06](images/test06_complex.png)
 
 
 ### **test07**:
-* 1 complex feature (with a negative and a positive components), 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^5_\varepsilon$
-* [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta = 0$
+* 1 complex feature (with a negative and a positive components), 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.1 where $\Omega = \Omega^5_\varepsilon$.
+* Test to prove that the features' separability condition is weak, in the context of a geometry with multiple features (see also **test06** and **test08**).
+    * [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta = 0$.
 
 ![test07](images/test07_complex.png)
 
 
 ### **test08**:
-* 2 features (1 negative and 1 positive), 2D
-* [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta > 0$
+* 2 features (1 negative and 1 positive), 2D.
+* Test to prove that the features' separability condition is weak, in the context of a geometry with multiple features (see also **test06** and **test07**).
+    * [AC2023+], Section 6.1.2 where $\Omega = \Omega_\delta$ for $\delta > 0$.
 
 ![test08](images/test08_neg_pos.png)
 
 
+### **test09**: 
+* 1 positive feature with a feature extension, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+
+![test09](images/test09_pos.png)
+![test09_feature_extensions](images/test09_feature_extension.png)
+
+
+### **test14**: 
+* 1 negative feature, 2D.
+* Convergence of the defeaturing error and estimator with respect to the distance between the feature and a Dirichlet boundary.
+
+![test14](images/test14_neg.png)
+
+
+### **test15**: 
+* 1 positive feature, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.1 where $\Omega = \Omega^3_\varepsilon$.
+
+![test15](images/test15_pos.png)
+
+
 ### **test16**:
-* 1 negative feature, 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^1_\varepsilon$
+* 1 negative feature, 2D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.1 where $\Omega = \Omega^1_\varepsilon$
 
 ![test16](images/test16_neg.png)
 
 
 ### **test17**:
-* 1 negative feature, 2D
-* [BCV2022], Section 6.1.1 where $\Omega = \Omega_s$
+* 1 negative feature, 2D.
+* Study of the impact of the feature's shape on the defeaturing error estimator (see also **test18** and **test19**).
+    * [BCV2022], Section 6.1.1 where $\Omega = \Omega_s$.
 
 ![test17](images/test17_neg.png)
 
 
 ### **test18**: 
-* 1 negative feature, 2D
-* [BCV2022], Section 6.1.1 where $\Omega = \Omega_c$
-* [BCV2022], Section 6.2.3 where $\Omega = \Omega_\varepsilon$
+* 1 negative feature, 2D.
+* Study of the impact of the feature's shape on the defeaturing error estimator (see also **test17** and **test19**).
+    * [BCV2022], Section 6.1.1 where $\Omega = \Omega_c$.
+* Study of the impact of the data of the defeatured problem (Neumann boundary condition and right hand side) on the convergence of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.3 where $\Omega = \Omega_\varepsilon$.
 
 ![test18](images/test18_neg.png)
 
 
 ### **test19**:
-* 1 negative feature, 2D
-* [BCV2022] Section 6.1.1 where $\Omega = \Omega_\star$
+* 1 negative feature, 2D.
+* Study of the impact of the feature's shape on the defeaturing error estimator (see also **test17** and **test18**).
+    * [BCV2022] Section 6.1.1 where $\Omega = \Omega_\star$.
 
 ![test19](images/test19_neg.png)
 
 
-### **test21**: 
-* 1 positive feature, 2D
-* [BCV2022], Section 6.2.1 where $\Omega = \Omega^3_\varepsilon$
-
-![test21](images/test21_pos.png)
-
-
 ### **test30**: 
-* 1 negative feature, 3D
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^1_\varepsilon$
+* 1 negative feature, 3D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.2 where $\Omega = \Omega^1_\varepsilon$.
 
 ![test30](images/test30_neg.png)
 
 
 ### **test31**:
-* 1 positive feature, 3D
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^3_\varepsilon$
+* 1 positive feature, 3D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.2 where $\Omega = \Omega^3_\varepsilon$.
 
 ![test31](images/test31_pos.png)
 
 
 ### **test32**:
-* 1 positive feature, 3D
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^4_\varepsilon$
+* 1 positive feature, 3D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.2 where $\Omega = \Omega^4_\varepsilon$.
 
 ![test32](images/test32_pos.png)
 
 
-### **test35**:
-* 1 negative feature, 3D
-* [BCV2022], Section 6.2.2 where $\Omega = \Omega^2_\varepsilon$
+### **test33**:
+* 1 negative feature, 3D.
+* Convergence study of the defeaturing error and estimator with respect to the size of the feature.
+    * [BCV2022], Section 6.2.2 where $\Omega = \Omega^2_\varepsilon$.
 
-![test35](images/test35_neg.png)
+![test33](images/test33_neg.png)

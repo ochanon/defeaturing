@@ -49,7 +49,7 @@ number_of_epsilons = numel(eps_values);
 error_h1s = zeros(1, number_of_epsilons);
 error_h1s_Omega_star = zeros(1, number_of_epsilons);
 error_h1s_F = zeros(1, number_of_epsilons);
-error_h1s_from_interface = zeros(1, number_of_epsilons);
+error_h1s_from_boundary = zeros(1, number_of_epsilons);
 error_h1s_from_positive_boundary = zeros(1, number_of_epsilons);
 error_h1s_from_negative_boundary = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
@@ -95,7 +95,7 @@ for iter = 1:number_of_epsilons
             problem_data.omega0_patches, msh, space, u);
 
     estimator(iter) = sqrt(estimator_positive_feature(iter)^2 + estimator_negative_feature(iter)^2); 
-    error_h1s_from_interface(iter) = sqrt(error_h1s_from_positive_boundary(iter)^2 + error_h1s_from_negative_boundary(iter)^2);
+    error_h1s_from_boundary(iter) = sqrt(error_h1s_from_positive_boundary(iter)^2 + error_h1s_from_negative_boundary(iter)^2);
     
     norm_of_u(iter) = errh1s_positive(msh, space, u, ...
         msh_0, space_0, zeros(size(u_0)), msh_F, space_F, zeros(size(u_0tilde)), problem_data.omega0_patches, ...
@@ -107,7 +107,7 @@ end
 %% Display and save the results
 if saveIt
     save(filename, 'eps_values', 'error_h1s', 'error_h1s_Omega_star', 'error_h1s_F', ...
-        'error_h1s_from_interface', 'error_h1s_from_positive_boundary', 'error_h1s_from_negative_boundary',...
+        'error_h1s_from_boundary', 'error_h1s_from_positive_boundary', 'error_h1s_from_negative_boundary',...
         'estimator', 'estimator_positive_feature', 'estimator_negative_feature', 'norm_of_u', 'relative_error_h1s')
 end
 if plotIt

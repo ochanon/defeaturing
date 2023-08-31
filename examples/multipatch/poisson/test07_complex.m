@@ -37,9 +37,9 @@ number_of_epsilons = numel(eps_values);
 error_h1s = zeros(1, number_of_epsilons);
 error_h1s_Omega_star = zeros(1, number_of_epsilons);
 error_h1s_F = zeros(1, number_of_epsilons);
-error_h1s_from_interface = zeros(1, number_of_epsilons);
-error_h1s_from_positive_interface = zeros(1, number_of_epsilons);
-error_h1s_from_negative_interface = zeros(1, number_of_epsilons);
+error_h1s_from_boundary = zeros(1, number_of_epsilons);
+error_h1s_from_positive_boundary = zeros(1, number_of_epsilons);
+error_h1s_from_negative_boundary = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
 estimator_positive_feature = zeros(1, number_of_epsilons);
 estimator_negative_feature = zeros(1, number_of_epsilons);
@@ -72,11 +72,11 @@ for iter = 1:number_of_epsilons
         problem_data_F.F_patches, problem_data_0.omega_patches);
 
     % 4b) COMPUTE ESTIMATOR AND ERROR FROM BOUNDARY
-    [estimator_positive_feature(iter), ~, ~, error_h1s_from_positive_interface(iter)] = ...
+    [estimator_positive_feature(iter), ~, ~, error_h1s_from_positive_boundary(iter)] = ...
         est_positive(msh_F, space_F, u_0tilde, problem_data_F.gamma0_sides, problem_data_F.gammae_sides,...
             problem_data_0.g, problem_data.g, problem_data_F.F_patches, ...
             problem_data.omega0_patches, space, u);
-    [estimator_negative_feature(iter), ~, error_h1s_from_negative_interface(iter)] = ...
+    [estimator_negative_feature(iter), ~, error_h1s_from_negative_boundary(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
@@ -87,15 +87,15 @@ for iter = 1:number_of_epsilons
     relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
 
     estimator(iter) = sqrt(estimator_positive_feature(iter)^2 + estimator_negative_feature(iter)^2); 
-    error_h1s_from_interface(iter) = sqrt(error_h1s_from_positive_interface(iter)^2 ...
-                                          + error_h1s_from_negative_interface(iter)^2);
+    error_h1s_from_boundary(iter) = sqrt(error_h1s_from_positive_boundary(iter)^2 ...
+                                          + error_h1s_from_negative_boundary(iter)^2);
 end
 
 
 %% Display and save the results
 if saveIt
     save(filename, 'eps_values', 'error_h1s', 'error_h1s_Omega_star', 'error_h1s_F', ...
-        'error_h1s_from_interface', 'error_h1s_from_positive_interface', 'error_h1s_from_negative_interface',...
+        'error_h1s_from_boundary', 'error_h1s_from_positive_boundary', 'error_h1s_from_negative_boundary',...
         'estimator', 'estimator_positive_feature', 'estimator_negative_feature', 'norm_of_u', 'relative_error_h1s')
 end
 if plotIt
