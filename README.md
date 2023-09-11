@@ -136,6 +136,14 @@ https://doi.org/10.48550/arXiv.2007.11525)
 ![test11](images/test11_neg_multifeature_squares.png)
 
 
+### **test13**: 
+* 1 negative feature, 2D.
+* Study of a geometry with one Neumann feature touching a Dirichlet boundary.
+* In `examples/trimming/poisson/`.
+
+![test13](images/test13_neg.png)
+
+
 ### **test14**: 
 * 1 negative feature, 2D.
 * Convergence of the defeaturing error and estimator with respect to the distance between the feature and a Dirichlet boundary.

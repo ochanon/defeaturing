@@ -6,6 +6,7 @@ clc
 
 %% Set problem data
 radiuses = [2.^(-3:-1) 0.99, 1]; % These are the different parameters R considered in [BCV2022].
+number_of_original_refinements = 8;
 
 filename = 'results/test10_neg';
 saveResults = false;
@@ -17,17 +18,20 @@ method_data.regularity = [2 2];
 method_data.nsub = [1 1];
 method_data.nquad = [6 6];
 
-problem_data.c_diff = @(x, y) ones(size(x));
-problem_data.g = @(x, y, ind) zeros(size(x)); 
-problem_data.h = @(x, y, ind) x.^2 .* (1 - x).^2 + y.^2 .* (1 - y).^2;
-problem_data.f = @(x, y) zeros(size(x)); 
+defeatured_problem_data.c_diff = @(x, y) ones(size(x));
+defeatured_problem_data.g = @(x, y, ind) zeros(size(x)); 
+defeatured_problem_data.h = @(x, y, ind) x.^2 .* (1 - x).^2 + y.^2 .* (1 - y).^2;
+defeatured_problem_data.f = @(x, y) zeros(size(x)); 
 
-problem_data.nmnn_sides = [1 4];
-problem_data.drchlt_sides = [2 3]; 
-gamma_side = 5;
+defeatured_boundary = 5;
+defeatured_problem_data.nmnn_sides = [1 4];
+defeatured_problem_data.drchlt_sides = [2 3]; 
+defeatured_problem_data.geo_name = nrbsquare([0, 0], 1, 1, method_data.degree, [2 2].^number_of_original_refinements);
 
-number_of_original_refinements = 8;
-problem_data.geo_name = nrbsquare([0, 0], 1, 1, method_data.degree, [2 2].^number_of_original_refinements);
+exact_problem_data = defeatured_problem_data;
+exact_problem_data.weak_drchlt_sides = []; 
+exact_problem_data.nmnn_sides = defeatured_boundary;
+exact_problem_data.hfun = defeatured_problem_data.h;
 
 
 %% Main
@@ -43,7 +47,7 @@ deg_reparam = 4;
 n_elem_reparam = 4;
 
 % 1) SOLVE THE DEFEATURED PROBLEM
-[~, msh_cart, space, u_0] = solve_laplace (problem_data, method_data);
+[~, msh_cart, space, u_0] = solve_laplace (defeatured_problem_data, method_data);
 
 iter = 0;
 for radius = radiuses
@@ -74,18 +78,15 @@ for radius = radiuses
     loops.tool_type = 3;
 
     %    b) Execute the trimming process
-    method_data.reparam = ref_trimming_reparameterization_2D(n_refs, problem_data.geo_name, ...
+    method_data.reparam = ref_trimming_reparameterization_2D(n_refs, exact_problem_data.geo_name, ...
                                                              {loops}, deg_reparam, n_elem_reparam);
 
     % 3) SOLVE THE (TRIMMED) EXACT PROBLEM
-    problem_data.weak_drchlt_sides = []; 
-    problem_data.nmnn_sides = gamma_side;
-    problem_data.hfun = problem_data.h;
-    [~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming (problem_data, method_data);
+    [~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming (exact_problem_data, method_data);
     
     % 4) COMPUTE ERROR AND ESTIMATOR
     [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
-        est_negative (u_0, msh_trimmed, sp_trimmed, problem_data.g, gamma_side, u);
+        est_negative (u_0, msh_trimmed, sp_trimmed, exact_problem_data.g, defeatured_boundary, u);
     error_h1s(iter) = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
 end
 

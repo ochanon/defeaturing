@@ -127,6 +127,7 @@ fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_
 fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_h1s)
 fprintf('    * Effectivity index                                = %f \n', norm(estimators)/error_h1s)
 
+
 %% Auxiliary function
 function res = neumann_function(x, y, ind, beta)
     if ind == 1 || ind == 3

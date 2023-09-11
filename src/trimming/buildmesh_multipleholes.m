@@ -5,7 +5,7 @@ nel_in_feature = 2 * nel;
 extension_factor = 4; 
 
 if length(nel) == 1
-    nel = nel*ones(1, size(centers,2));
+    nel = nel * ones(1, size(centers,2));
 end
 if length(nel_in_extension) == 1
     nel_in_extension = nel_in_extension*ones(1, size(centers,2));
