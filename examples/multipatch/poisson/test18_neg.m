@@ -31,7 +31,7 @@ plotIt = true;
 problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.f = @(x, y) ones(size(x)); 
 problem_data.h = @(x, y, ind) zeros(size(x));
-[problem_data, problem_data_0] = determineBC(problem_data);
+[problem_data, problem_data_0] = set_boundary_conditions(problem_data);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -41,12 +41,12 @@ method_data.nquad = [5 5];
 
 %% Main
 number_of_circle_radiuses = numel(circle_radiuses);
-error_h1s = zeros(1, number_of_circle_radiuses);
-error_h1s_from_boundary = zeros(1, number_of_circle_radiuses);
+error_H1s = zeros(1, number_of_circle_radiuses);
+error_H1s_boundary_representation = zeros(1, number_of_circle_radiuses);
 estimator = zeros(1, number_of_circle_radiuses);
 measure_of_gamma = zeros(1, number_of_circle_radiuses);
 norm_of_u = zeros(1, number_of_circle_radiuses);
-relative_error_h1s = zeros(1, number_of_circle_radiuses);
+relative_error_H1s = zeros(1, number_of_circle_radiuses);
 
 for iter = 1:number_of_circle_radiuses
     radius = circle_radiuses(iter);
@@ -54,36 +54,40 @@ for iter = 1:number_of_circle_radiuses
     problem_data.g = @(x, y, ind) neumann_function(x, y, ind, radius);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F] = buildGeometry(radius);
+    [srf_0, srf, srf_F] = build_geometry(radius);
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
     
     % 2) SOLVE THE EXACT PROBLEM
-    [omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+    [omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
     
     % 3) SOLVE THE DEFEATURED PROBLEM
-    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
+    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
     
-    % 4) COMPUTE ERROR AND ESTIMATOR
-    error_h1s(iter) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
-    norm_of_u(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
-    relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
-
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
+    % 4a) COMPUTE THE DEFEATURING ESTIMATOR
+    [estimator(iter), measure_of_gamma(iter), error_H1s_boundary_representation(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
+
+    % 4b) COMPUTE THE DEFEATURING ERROR
+    error_H1s(iter) = defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+                                            msh, space, u);
+
+    norm_of_u(iter) = error_H1s_in_patches(msh, space, u, 1:msh.npatch, ...
+                                           msh, space, zeros(size(u)));
+    relative_error_H1s(iter) = error_H1s(iter) / norm_of_u(iter);
 end
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'circle_radiuses', 'error_h1s', 'error_h1s_from_boundary', ...
-        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
+    save(filename, 'circle_radiuses', 'error_H1s', 'error_H1s_boundary_representation', ...
+        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_H1s')
 end
 if plotIt
     fig = figure;
-    loglog(circle_radiuses, error_h1s, '+-r', circle_radiuses, estimator, '+-b');
+    loglog(circle_radiuses, error_H1s, '+-r', circle_radiuses, estimator, '+-b');
     grid on
     legend('|u-u_0|_{1,\Omega}', 'Estimator', 'Location', 'northwest')
     if saveIt
@@ -93,13 +97,13 @@ end
 
 fprintf('For circle_radius = %e, \n', circle_radiuses(end))
 fprintf('    * Estimator                                      = %e \n', estimator(end))
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega}            = %e \n', error_h1s(end))
-fprintf('    * Relative error |u-u_0|_{1,Omega}/|u|_{1,Omega} = %e \n', relative_error_h1s(end))
-fprintf('    * Effectivity index                              = %f \n', estimator(end)/error_h1s(end))
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}            = %e \n', error_H1s(end))
+fprintf('    * Relative error |u-u_0|_{1,Omega}/|u|_{1,Omega} = %e \n', relative_error_H1s(end))
+fprintf('    * Effectivity index                              = %f \n', estimator(end) / error_H1s(end))
 
 
 %% Auxiliary functions
-function [srf_0, srf, srf_F] = buildGeometry(epsilon)
+function [srf_0, srf, srf_F] = build_geometry(epsilon)
     L = sqrt(2) * epsilon / 4;
     extension_factor = 4;
 
@@ -124,7 +128,7 @@ function [srf_0, srf, srf_F] = buildGeometry(epsilon)
     srf_F = srf_0(5:9);
 end
 
-function [problem_data, problem_data_0] = determineBC(problem_data)
+function [problem_data, problem_data_0] = set_boundary_conditions(problem_data)
     problem_data_0 = problem_data;
     
     % Exact problem

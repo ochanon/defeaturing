@@ -4,14 +4,14 @@ clc
 
 % -- Test reproducing [BCV2022], Section 6.3.1, geometry \Omega_R --
 
-%% Set problem data
-radiuses = [2.^(-3:-1) 0.99, 1]; % These are the different parameters R considered in [BCV2022].
-number_of_original_refinements = 8;
-
 filename = 'results/test10_neg';
 saveResults = false;
 plotResults = true;
 plotExactGeometry = false; % Warning: drawing the geometry may take very long if the number of elements is high.
+
+%% Set problem data
+radiuses = [2.^(-3:-1) 0.99, 1]; % These are the different parameters R considered in [BCV2022].
+number_of_original_refinements = 8;
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -37,8 +37,8 @@ exact_problem_data.hfun = defeatured_problem_data.h;
 %% Main
 number_of_radiuses = length(radiuses);
 estimator = zeros(number_of_radiuses, 1);
-error_h1s = zeros(number_of_radiuses, 1);
-error_h1s_from_boundary = zeros(number_of_radiuses, 1);
+error_H1s = zeros(number_of_radiuses, 1);
+error_H1s_boundary_representation = zeros(number_of_radiuses, 1);
 measure_of_gamma = zeros(number_of_radiuses, 1);
 
 % Define trimming parameters
@@ -85,19 +85,19 @@ for radius = radiuses
     [~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming (exact_problem_data, method_data);
     
     % 4) COMPUTE ERROR AND ESTIMATOR
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
+    [estimator(iter), measure_of_gamma(iter), error_H1s_boundary_representation(iter)] = ...
         est_negative (u_0, msh_trimmed, sp_trimmed, exact_problem_data.g, defeatured_boundary, u);
-    error_h1s(iter) = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
+    error_H1s(iter) = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
 end
 
 
 %% Display and save the results
 if saveResults
-    save(filename, 'radiuses', 'estimator', 'error_h1s', 'error_h1s_from_boundary', 'measure_of_gamma')
+    save(filename, 'radiuses', 'estimator', 'error_H1s', 'error_H1s_boundary_representation', 'measure_of_gamma')
 end
 if plotResults
-    loglog(radiuses, estimator, '+-', radiuses, error_h1s, '+-',...
-        radiuses, error_h1s_from_boundary, '+-', radiuses, radiuses.^4*1e-2, 'k:')
+    loglog(radiuses, estimator, '+-', radiuses, error_H1s, '+-',...
+        radiuses, error_H1s_boundary_representation, '+-', radiuses, radiuses.^4*1e-2, 'k:')
     legend('estimator', 'error h1s', 'error h1s from boundary', 'slope')
 end
 if plotExactGeometry

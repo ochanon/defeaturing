@@ -26,7 +26,7 @@ defeatured_problem_data.h = @(x, y, ind) zeros(size(x));
 defeatured_boundaries = 5;
 defeatured_problem_data.nmnn_sides = []; 
 defeatured_problem_data.drchlt_sides = 1:4; 
-defeatured_problem_data.geo_name = buildGeometry(degree, num_elements); 
+defeatured_problem_data.geo_name = build_geometry(degree, num_elements); 
 
 exact_problem_data = defeatured_problem_data;
 exact_problem_data.weak_drchlt_sides = []; 
@@ -67,17 +67,17 @@ method_data.reparam = ref_trimming_reparameterization_2D(n_refs, exact_problem_d
 [~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming(exact_problem_data, method_data);
 
 % 4) COMPUTE ERROR AND ESTIMATOR
-[estimator, measure_of_gamma, errors_h1s_from_boundary] = est_negative(u_0, msh_trimmed, sp_trimmed, ...
+[estimator, measure_of_gamma, error_H1s_boundary_representation] = est_negative(u_0, msh_trimmed, sp_trimmed, ...
                                                                         exact_problem_data.g, defeatured_boundaries, u);
-error_h1s = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
+error_H1s = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
 norm_of_u = errh1s_negative (zeros(size(u_0)), msh_trimmed, sp_trimmed, u);
-relative_error_h1s = error_h1s./norm_of_u;
+relative_error_H1s = error_H1s./norm_of_u;
 
 
 %% Display and save the results
 if saveResults
-    save(filename, 'estimator', 'measure_of_gamma', 'errors_h1s_from_boundary',...
-         'error_h1s', 'norm_of_u', 'relative_error_h1s')
+    save(filename, 'estimator', 'measure_of_gamma', 'error_H1s_boundary_representation',...
+         'error_H1s', 'norm_of_u', 'relative_error_H1s')
 end
 if plotExactGeometry
     plot_trimmed_geometry(method_data.reparam); 
@@ -87,13 +87,13 @@ if plotExactGeometry
 end
 
 fprintf('    * Estimator                                        = %e \n', estimator)
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_h1s)
-fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_h1s)
-fprintf('    * Effectivity index                                = %f \n', estimator/error_h1s)
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_H1s)
+fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_H1s)
+fprintf('    * Effectivity index                                = %f \n', estimator/error_H1s)
 
 
 %% Auxiliary function
-function square = buildGeometry(degree, num_elements)
+function square = build_geometry(degree, num_elements)
     square = nrbsquare([-0.5, -0.5], 1, 1);
     square = nrbdegelev(square, [degree, degree] - 1);
     knots1 = linspace(0, 0.38, num_elements + 1); 

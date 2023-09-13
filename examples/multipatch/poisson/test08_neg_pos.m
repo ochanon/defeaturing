@@ -21,7 +21,7 @@ problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) zeros(size(x)); 
 problem_data.h = @(x, y, ind) 40 * cos(pi * x) + 10 * cos(5 * pi * x);
 
-[problem_data, problem_data_0, problem_data_F] = determineBC(problem_data);
+[problem_data, problem_data_0, problem_data_Fp] = set_boundary_conditions(problem_data);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -32,56 +32,59 @@ method_data.nquad = [5 5];
 %% Main
 
 % 1) BUILD GEOMETRY
-[srf_0, srf, srf_Fpos] = buildGeometry(feature_side_length, delta); 
+[srf_0, srf, srf_Fp] = build_geometry(feature_side_length, delta); 
 problem_data.geo_name = srf;
 problem_data_0.geo_name = srf_0;
-problem_data_F.geo_name = srf_Fpos;
+problem_data_Fp.geo_name = srf_Fp;
 
 % 2) SOLVE THE EXACT PROBLEM
-[omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+[omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
 
 % 3a) SOLVE THE DEFEATURED PROBLEM
-[omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
-problem_data_F.h = buildDirichletConditionExtPb(msh_0, problem_data_0, space_0, u_0);
+[omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
+problem_data_Fp.h = extract_boundary_dofs(msh_0, space_0, u_0, problem_data_0.gamma0_sides);
 
 % 3b) SOLVE THE EXTENSION PROBLEM
-[F, msh_F, space_F, u_0tilde] = my_mp_solve_laplace (problem_data_F, method_data);
+[Fp, msh_Fp, space_Fp, u_0tilde] = mp_solve_laplace_generalized(problem_data_Fp, method_data);
 
-% 4a) COMPUTE ERROR
-[error_h1s, error_h1s_from_boundary, error_h1s_F] = errh1s_positive(msh, space, u, msh_0, ...
-    space_0, u_0, msh_F, space_F, u_0tilde, problem_data.omega0_patches, ...
-    problem_data_F.F_patches, problem_data_0.omega_patches);
-
-% 4b) COMPUTE ESTIMATOR AND ERROR FROM BOUNDARY
-[estimator_positive_part, measure_of_gamma0, ~, error_h1s_from_positive_boundary] = ...
-    est_positive(msh_F, space_F, u_0tilde, problem_data_F.gamma0_sides, problem_data_F.gammae_sides,...
-        problem_data_0.g, problem_data.g, problem_data_F.F_patches, ...
+% 4a) COMPUTE THE DEFEATURING ESTIMATOR
+[estimator_Fp, measure_of_gamma0, ~, error_H1s_boundary_representation_Fp] = ...
+    est_positive(msh_Fp, space_Fp, u_0tilde, problem_data_Fp.gamma0_sides, problem_data_Fp.gammae_sides,...
+        problem_data_0.g, problem_data.g, problem_data_Fp.F_patches, ...
         problem_data.omega0_patches, space, u);
-[estimator_negative_part, measure_of_gamma, error_h1s_from_negative_boundary] = ...
+[estimator_Fn, measure_of_gamma, error_H1s_boundary_representation_Fn] = ...
     est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
         problem_data_0.omega_patches, problem_data.gamma_sides, ...
         problem_data.omega0_patches, msh, space, u);
         
-estimator = sqrt(estimator_positive_part^2 + estimator_negative_part^2); 
-errh1s_interface = sqrt(error_h1s_from_positive_boundary^2 + error_h1s_from_negative_boundary^2);
+estimator = sqrt(estimator_Fp^2 + estimator_Fn^2); 
+
+error_H1s_boundary_representation = sqrt(error_H1s_boundary_representation_Fp^2 ...
+                                         + error_H1s_boundary_representation_Fn^2);
+
+% 4b) COMPUTE THE DEFEATURING ERROR
+[error_H1s, error_H1s_Omega_star, error_H1s_Fp] = ...
+    defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+                          msh, space, u, problem_data.omega0_patches, ...
+                          msh_Fp, space_Fp, u_0tilde, problem_data_Fp.F_patches);
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'feature_side_length', 'delta', 'error_h1s', 'error_h1s_from_boundary', ...
-        'error_h1s_F', 'errh1s_interface', 'measure_of_gamma0', 'measure_of_gamma', ...
-        'error_h1s_from_positive_boundary', 'error_h1s_from_negative_boundary', ...
-        'estimator', 'estimator_positive_part', 'estimator_negative_part')
+    save(filename, 'feature_side_length', 'delta', 'error_H1s', 'error_H1s_Omega_star', ...
+        'error_H1s_Fp', 'error_H1s_boundary_representation', 'measure_of_gamma0', 'measure_of_gamma', ...
+        'error_H1s_boundary_representation_Fp', 'error_H1s_boundary_representation_Fn', ...
+        'estimator', 'estimator_Fp', 'estimator_Fn')
 end
 
 fprintf('For delta = %e, \n', delta)
 fprintf('    * Estimator                           = %e \n', estimator)
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega} = %e \n', error_h1s)
-fprintf('    * Effectivity index                   = %f \n', estimator/error_h1s)
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega} = %e \n', error_H1s)
+fprintf('    * Effectivity index                   = %f \n', estimator / error_H1s)
 
 
 %% Auxiliary functions
-function [srf_0, srf, srf_Fpos] = buildGeometry(epsilon, delta)
+function [srf_0, srf, srf_Fpos] = build_geometry(epsilon, delta)
     extension_factor = 4; 
 
     srf_tot(1) = nrb4surf([0, 0], [0.5 - epsilon - delta / 2, 0], ...
@@ -143,10 +146,10 @@ function [srf_0, srf, srf_Fpos] = buildGeometry(epsilon, delta)
     srf = srf_tot([1:8 10:11]);
 end
 
-function [problem_data, problem_data_0, problem_data_F] = determineBC(problem_data)
+function [problem_data, problem_data_0, problem_data_Fp] = set_boundary_conditions(problem_data)
     problem_data_0 = problem_data;
-    problem_data_F = problem_data;
-    problem_data_F = rmfield(problem_data_F, 'h');
+    problem_data_Fp = problem_data;
+    problem_data_Fp = rmfield(problem_data_Fp, 'h');
     
     % Exact problem
     problem_data.nmnn_sides = [1 6 7 9:18]; 
@@ -163,9 +166,9 @@ function [problem_data, problem_data_0, problem_data_F] = determineBC(problem_da
     problem_data_0.gamma_sides([4 8 10]) = {4, 2, 1};
     
     % Extension problem
-    problem_data_F.nmnn_sides = [1 2 4]; 
-    problem_data_F.drchlt_sides = 3; 
-    problem_data_F.gamma0_sides = 3; 
-    problem_data_F.gammae_sides = {[]}; % relative to each patch
-    problem_data_F.F_patches = 1; 
+    problem_data_Fp.nmnn_sides = [1 2 4]; 
+    problem_data_Fp.drchlt_sides = 3; 
+    problem_data_Fp.gamma0_sides = 3; 
+    problem_data_Fp.gammae_sides = {[]}; % relative to each patch
+    problem_data_Fp.F_patches = 1; 
 end

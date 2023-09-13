@@ -19,7 +19,7 @@ problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) zeros(size(x)); 
 problem_data.h = @(x, y, ind) cos(pi * x) + 10 * cos(5 * pi * x);
 
-[problem_data, problem_data_0, problem_data_F] = determineBC(problem_data, feature_extension);
+[problem_data, problem_data_0, problem_data_Ftilde] = set_boundary_conditions(problem_data, feature_extension);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -29,55 +29,56 @@ method_data.nquad = [5 5];
 
 %% Main
 % 1) BUILD GEOMETRY
-[srf_0, srf, srf_F, srf_Ftilde] = buildGeometry(feature_extension);
+[srf_0, srf, srf_F, srf_Ftilde] = build_geometry(feature_extension);
 problem_data.geo_name = srf;
 problem_data_0.geo_name = srf_0;
 if strcmp(feature_extension, 'F')
-    problem_data_F.geo_name = srf_F;
+    problem_data_Ftilde.geo_name = srf_F;
 else
-    problem_data_F.geo_name = srf_Ftilde;
+    problem_data_Ftilde.geo_name = srf_Ftilde;
 end
 
 % 2) SOLVE THE EXACT PROBLEM
-[omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+[omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
 
 % 3a) SOLVE THE DEFEATURED PROBLEM
-[omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
-problem_data_F.h = buildDirichletConditionExtPb(msh_0, problem_data_0, space_0, u_0);
+[omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
+problem_data_Ftilde.h = extract_boundary_dofs(msh_0, space_0, u_0, problem_data_0.gamma0_sides);
 
 % 3b) SOLVE THE (EXTENDED) EXTENSION PROBLEM
-[Ftilde, msh_Ftilde, space_Ftilde, u_0tilde] = my_mp_solve_laplace (problem_data_F, method_data);
+[Ftilde, msh_Ftilde, space_Ftilde, u_0tilde] = mp_solve_laplace_generalized(problem_data_Ftilde, method_data);
 
-% 4) COMPUTE ERROR AND ESTIMATOR
-[error_h1s, error_h1s_0, error_h1s_F] = errh1s_positive(msh, space, u, ...
-    msh_0, space_0, u_0, msh_Ftilde, space_Ftilde, u_0tilde, ...
-    problem_data.omega0_patches, problem_data_F.F_patches);
+% 4a) COMPUTE THE DEFEATURING ESTIMATOR
+[estimator, measure_of_gamma0, measure_of_gammae, error_H1s_boundary_representation] = ...
+    est_positive(msh_Ftilde, space_Ftilde, u_0tilde, problem_data_Ftilde.gamma0_sides,...
+        problem_data_Ftilde.gammae_sides, problem_data_0.g, problem_data.g,...
+        problem_data_Ftilde.F_patches, problem_data.omega0_patches, space, u);
 
-[estimator, measure_of_gamma0, measure_of_gammae, error_h1s_from_boundary] = ...
-    est_positive(msh_Ftilde, space_Ftilde, u_0tilde, problem_data_F.gamma0_sides,...
-        problem_data_F.gammae_sides, problem_data_0.g, problem_data.g,...
-        problem_data_F.F_patches, problem_data.omega0_patches, space, u);
+% 4b) COMPUTE THE DEFEATURING ERROR
+[error_H1s, error_H1s_0, error_H1s_F] = defeaturing_error_H1s(msh_0, space_0, u_0, [], ...
+                                              msh, space, u, problem_data.omega0_patches, ...
+                                              msh_Ftilde, space_Ftilde, u_0tilde, problem_data_Ftilde.F_patches);
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'feature_extension', 'error_h1s', 'error_h1s_0', 'error_h1s_F', ...
-        'error_h1s_from_boundary', 'estimator', 'measure_of_gamma0', 'measure_of_gammae')
+    save(filename, 'feature_extension', 'error_H1s', 'error_H1s_0', 'error_H1s_F', ...
+        'error_H1s_boundary_representation', 'estimator', 'measure_of_gamma0', 'measure_of_gammae')
 end
 
 fprintf('For feature extension = %s, \n', feature_extension)
 fprintf('    * Estimator                                          = %e \n', estimator)
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega}                = %e \n', error_h1s)
-fprintf('    * Defeaturing error in Omega_0, |u-u_0|_{1,Omega_0}  = %e \n', error_h1s_0)
-fprintf('    * Defeaturing error in F, |u-u_0|_{1,F}              = %e \n', error_h1s_F)
-fprintf('    * Effectivity index                                  = %f \n', estimator/error_h1s)
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}                = %e \n', error_H1s)
+fprintf('    * Defeaturing error in Omega_0, |u-u_0|_{1,Omega_0}  = %e \n', error_H1s_0)
+fprintf('    * Defeaturing error in F, |u-u_0|_{1,F}              = %e \n', error_H1s_F)
+fprintf('    * Effectivity index                                  = %f \n', estimator / error_H1s)
 
 
 %% Auxiliary functions
-function [problem_data, problem_data_0, problem_data_F] = determineBC(problem_data, feature_extension)
+function [problem_data, problem_data_0, problem_data_Ftilde] = set_boundary_conditions(problem_data, feature_extension)
     problem_data_0 = problem_data;
-    problem_data_F = problem_data;
-    problem_data_F = rmfield(problem_data_F, 'h');
+    problem_data_Ftilde = problem_data;
+    problem_data_Ftilde = rmfield(problem_data_Ftilde, 'h');
     
     % Exact problem
     problem_data.nmnn_sides = [1:3 5 7 8]; 
@@ -91,22 +92,22 @@ function [problem_data, problem_data_0, problem_data_F] = determineBC(problem_da
     
     if strcmp(feature_extension, 'F')
         % Extension problem
-        problem_data_F.nmnn_sides = [2 5]; 
-        problem_data_F.drchlt_sides = [1 3 4 6];
-        problem_data_F.gamma0_sides = [1 3 4 6];
-        problem_data_F.F_patches = 1:3;
-        problem_data_F.gammae_sides = cell(3,1);
+        problem_data_Ftilde.nmnn_sides = [2 5]; 
+        problem_data_Ftilde.drchlt_sides = [1 3 4 6];
+        problem_data_Ftilde.gamma0_sides = [1 3 4 6];
+        problem_data_Ftilde.F_patches = 1:3;
+        problem_data_Ftilde.gammae_sides = cell(3,1);
     else
         % Extended extension problem
-        problem_data_F.nmnn_sides = 5:8; 
-        problem_data_F.drchlt_sides = 1:4;
-        problem_data_F.gamma0_sides = 1:4;
-        problem_data_F.F_patches = 1:3;
-        problem_data_F.gammae_sides = {4, [], 2}; % side local to patch, for each patch
+        problem_data_Ftilde.nmnn_sides = 5:8; 
+        problem_data_Ftilde.drchlt_sides = 1:4;
+        problem_data_Ftilde.gamma0_sides = 1:4;
+        problem_data_Ftilde.F_patches = 1:3;
+        problem_data_Ftilde.gammae_sides = {4, [], 2}; % side local to patch, for each patch
     end
 end
 
-function [srf_0, srf, srf_F, srf_Ftilde] = buildGeometry(feature_extension)
+function [srf_0, srf, srf_F, srf_Ftilde] = build_geometry(feature_extension)
     epsilon = 0.5;
     srf(6) = nrbsquare([0.5, 0.5], epsilon / 5, epsilon / 5);
     srf(6) = nrbdegelev(srf(6), [1, 1]);

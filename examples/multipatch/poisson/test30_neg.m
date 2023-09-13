@@ -5,7 +5,7 @@ clc
 % -- Test reproducing [BCV2022], Section 6.2.2, geometry \Omega_\varepsilon^1 --
 
 %% Set problem data
-eps_values = 1e-2 ./ 2.^(0:6);
+epsilon_values = 1e-2 ./ 2.^(0:6);
 
 filename = 'results/test30_neg';
 saveIt = false;
@@ -15,7 +15,7 @@ problem_data.c_diff = @(x, y, z) ones(size(x));
 problem_data.g = @(x, y, z, ind) zeros(size(x));
 problem_data.f = @(x, y, z) 10 * cos(3 * pi * x) .* sin(5 * pi * y) .* sin(7 * pi * z); 
 problem_data.h = @(x, y, z, ind) zeros(size(x));
-[problem_data, problem_data_0] = determineBC(problem_data);
+[problem_data, problem_data_0] = set_boundary_conditions(problem_data);
 
 method_data.degree = [3 3 3];
 method_data.regularity = [2 2 2];
@@ -24,49 +24,53 @@ method_data.nquad = [5 5 5];
 
 
 %% Main
-number_of_epsilons = numel(eps_values);
-error_h1s = zeros(1, number_of_epsilons);
-error_h1s_from_boundary = zeros(1, number_of_epsilons);
+number_of_epsilons = numel(epsilon_values);
+error_H1s = zeros(1, number_of_epsilons);
+error_H1s_boundary_representation = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
 measure_of_gamma = zeros(1, number_of_epsilons);
 norm_of_u = zeros(1, number_of_epsilons);
-relative_error_h1s = zeros(1, number_of_epsilons);
+relative_error_H1s = zeros(1, number_of_epsilons);
 
 for iter = 1:number_of_epsilons
-    epsilon = eps_values(iter);
+    epsilon = epsilon_values(iter);
     fprintf('----- epsilon = %f -----\n', epsilon);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F] = buildGeometry(epsilon);
+    [srf_0, srf, srf_F] = build_geometry(epsilon);
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
     
     % 2) SOLVE THE EXACT PROBLEM
-    [omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+    [omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
     
     % 3) SOLVE THE DEFEATURED PROBLEM
-    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
-    
-    % 4) COMPUTE ERROR AND ESTIMATOR
-    error_h1s(iter) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
-    norm_of_u(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
-    relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
+    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
 
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
+    % 4a) COMPUTE THE DEFEATURING ESTIMATOR
+    [estimator(iter), measure_of_gamma(iter), error_H1s_boundary_representation(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
+
+    % 4b) COMPUTE THE DEFEATURING ERROR
+    error_H1s(iter) = defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+                                            msh, space, u);
+
+    norm_of_u(iter) = error_H1s_in_patches(msh, space, u, 1:msh.npatch, ...
+                                           msh, space, zeros(size(u)));
+    relative_error_H1s(iter) = error_H1s(iter) / norm_of_u(iter);
 end
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'eps_values', 'error_h1s', 'error_h1s_from_boundary', ...
-        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
+    save(filename, 'epsilon_values', 'error_H1s', 'error_H1s_boundary_representation', ...
+        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_H1s')
 end
 if plotIt
     fig = figure;
-    loglog(eps_values, error_h1s, '+-r', eps_values, estimator, '+-b', eps_values, eps_values.^(3/2)*0.3, 'k:');
+    loglog(epsilon_values, error_H1s, '+-r', epsilon_values, estimator, '+-b', epsilon_values, epsilon_values.^(3/2)*0.3, 'k:');
     grid on
     legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^{3/2}', 'Location', 'northwest')
     if saveIt
@@ -76,7 +80,7 @@ end
 
 
 %% Auxiliary functions
-function [srf_0, srf, srf_F] = buildGeometry(epsilon)
+function [srf_0, srf, srf_F] = build_geometry(epsilon)
     extension_factor = 4;
 
     srf_0(1) = nrb4surf([0, 0], [0.5 - epsilon / 2, 0], [0, 1 - epsilon], [0.5 - epsilon / 2, 1 - epsilon]);
@@ -125,7 +129,7 @@ function [srf_0, srf, srf_F] = buildGeometry(epsilon)
     srf_F = srf_0(5);
 end
 
-function [problem_data, problem_data_0] = determineBC(problem_data)
+function [problem_data, problem_data_0] = set_boundary_conditions(problem_data)
     problem_data_0 = problem_data;
     
     % Exact problem

@@ -15,7 +15,7 @@ problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) ones(size(x)); 
 problem_data.h = @(x, y, ind) zeros(size(x));
 
-[problem_data, problem_data_0] = determineBC(problem_data);
+[problem_data, problem_data_0] = set_boundary_conditions(problem_data);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -25,8 +25,8 @@ method_data.nquad = [5 5];
 
 %% Main
 number_of_iterations = numel(distances_from_dirichlet_boundary);
-error_h1s = zeros(1, number_of_iterations);
-error_h1s_from_boundary = zeros(1, number_of_iterations);
+error_H1s = zeros(1, number_of_iterations);
+error_H1s_boundary_representation = zeros(1, number_of_iterations);
 estimator = zeros(1, number_of_iterations);
 measure_of_gamma = zeros(1, number_of_iterations);
 
@@ -35,33 +35,36 @@ for iter = 1:number_of_iterations
     fprintf('----- Distance from the Dirichlet boundary = %f -----\n', distance);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F] = buildGeometry(distance, feature_radius);
+    [srf_0, srf, srf_F] = build_geometry(distance, feature_radius);
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
     
     % 2) SOLVE THE EXACT PROBLEM
-    [omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+    [omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
     
     % 3) SOLVE THE DEFEATURED PROBLEM
-    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
+    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
     
-    % 4) COMPUTE ERROR AND ESTIMATOR
-    error_h1s(iter) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
-        est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
+    % 4) COMPUTE THE DEFEATURING ESTIMATOR
+    [estimator(iter), measure_of_gamma(iter), error_H1s_boundary_representation(iter)] = ...
+        est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g, ...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
+
+    % 4b) COMPUTE THE DEFEATURING ERROR
+    error_H1s(iter) = defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+                                            msh, space, u);
 end
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'distances_from_dirichlet_boundary', 'error_h1s', ...
-        'error_h1s_from_boundary', 'estimator', 'measure_of_gamma')
+    save(filename, 'distances_from_dirichlet_boundary', 'error_H1s', ...
+        'error_H1s_boundary_representation', 'estimator', 'measure_of_gamma')
 end
 if plotIt
     fig = figure;
-    loglog(distances_from_dirichlet_boundary, error_h1s, '+-r', ...
+    loglog(distances_from_dirichlet_boundary, error_H1s, '+-r', ...
            distances_from_dirichlet_boundary, estimator, '+-b');
     grid on
     legend('|u-u_0|_{1,\Omega}', 'Estimator', 'Location', 'west')
@@ -73,7 +76,7 @@ end
 
 
 %% Auxiliary functions
-function [srf_0, srf, srf_F] = buildGeometry(distance, feature_radius)
+function [srf_0, srf, srf_F] = build_geometry(distance, feature_radius)
     L = sqrt(2) * feature_radius / 4;
     extension_factor = 4; 
 
@@ -107,7 +110,7 @@ function [srf_0, srf, srf_F] = buildGeometry(distance, feature_radius)
     srf_F = srf_0(5:9);
 end
 
-function [problem_data, problem_data_0] = determineBC(problem_data)
+function [problem_data, problem_data_0] = set_boundary_conditions(problem_data)
     problem_data_0 = problem_data;
     
     % Exact problem

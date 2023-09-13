@@ -21,7 +21,7 @@ problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) ones(size(x));
 problem_data.h = @(x, y, ind) zeros(size(x));
-[problem_data, problem_data_0] = determineBC(problem_data);
+[problem_data, problem_data_0] = set_boundary_conditions(problem_data);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -31,48 +31,52 @@ method_data.nquad = [5 5];
 
 %% Main
 number_of_side_lengths = numel(side_lengths);
-error_h1s = zeros(1, number_of_side_lengths);
-error_h1s_from_boundary = zeros(1, number_of_side_lengths);
+error_H1s = zeros(1, number_of_side_lengths);
+error_H1s_boundary_representation = zeros(1, number_of_side_lengths);
 estimator = zeros(1, number_of_side_lengths);
 measure_of_gamma = zeros(1, number_of_side_lengths);
 norm_of_u = zeros(1, number_of_side_lengths);
-relative_error_h1s = zeros(1, number_of_side_lengths);
+relative_error_H1s = zeros(1, number_of_side_lengths);
 
 for iter = 1:number_of_side_lengths
     side = side_lengths(iter);
     fprintf('----- side length = %f -----\n', side);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F] = buildGeometry(side);
+    [srf_0, srf, srf_F] = build_geometry(side);
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
     
     % 2) SOLVE THE EXACT PROBLEM
-    [omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+    [omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
     
     % 3) SOLVE THE DEFEATURED PROBLEM
-    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
+    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
     
-    % 4) COMPUTE ERROR AND ESTIMATOR
-    error_h1s(iter) = errh1s_negative(msh, space, u, msh_0, space_0, u_0, problem_data_0.omega_patches);
-    norm_of_u(iter) = errh1s_negative(msh, space, u, msh_0, space_0, zeros(size(u_0)), problem_data_0.omega_patches);
-    relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
-
-    [estimator(iter), measure_of_gamma(iter), error_h1s_from_boundary(iter)] = ...
+    % 4a) COMPUTE THE DEFEATURING ESTIMATOR
+    [estimator(iter), measure_of_gamma(iter), error_H1s_boundary_representation(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
+
+    % 4b) COMPUTE THE DEFEATURING ERROR
+    error_H1s(iter) = defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+                                            msh, space, u);
+
+    norm_of_u(iter) = error_H1s_in_patches(msh, space, u, 1:msh.npatch, ...
+                                           msh, space, zeros(size(u)));
+    relative_error_H1s(iter) = error_H1s(iter) / norm_of_u(iter);
 end
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'side_lengths', 'error_h1s', 'error_h1s_from_boundary', ...
-        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_h1s')
+    save(filename, 'side_lengths', 'error_H1s', 'error_H1s_boundary_representation', ...
+        'estimator', 'measure_of_gamma', 'norm_of_u', 'relative_error_H1s')
 end
 if plotIt
     fig = figure;
-    loglog(side_lengths, error_h1s, '+-r', side_lengths, estimator, '+-b', ...
+    loglog(side_lengths, error_H1s, '+-r', side_lengths, estimator, '+-b', ...
            side_lengths, side_lengths.^2*2, 'k:');
     grid on
     legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon^2', 'Location', 'northwest')
@@ -83,13 +87,13 @@ end
 
 fprintf('For half_side_length_of_squared_feature = %e, \n', half_side_length_of_squared_feature(end))
 fprintf('    * Estimator                                      = %e \n', estimator(end))
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega}            = %e \n', error_h1s(end))
-fprintf('    * Relative error |u-u_0|_{1,Omega}/|u|_{1,Omega} = %e \n', relative_error_h1s(end))
-fprintf('    * Effectivity index                              = %f \n', estimator(end)/error_h1s(end))
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}            = %e \n', error_H1s(end))
+fprintf('    * Relative error |u-u_0|_{1,Omega}/|u|_{1,Omega} = %e \n', relative_error_H1s(end))
+fprintf('    * Effectivity index                              = %f \n', estimator(end) / error_H1s(end))
 
 
 %% Auxiliary functions
-function [srf_0, srf, srf_F] = buildGeometry(side_length)
+function [srf_0, srf, srf_F] = build_geometry(side_length)
     L = side_length/2;
     extension_factor = 4;
     tol = 0.1;
@@ -122,7 +126,7 @@ function [srf_0, srf, srf_F] = buildGeometry(side_length)
     srf_F = srf_0(9);
 end
 
-function [problem_data, problem_data_0] = determineBC(problem_data)
+function [problem_data, problem_data_0] = set_boundary_conditions(problem_data)
     problem_data_0 = problem_data;
     
     % Exact problem

@@ -1,4 +1,7 @@
-% MP_SOLVE_LAPLACE: solve the Laplacian problem in a multipatch geometry.
+% MP_SOLVE_LAPLACE_GENERALIZED: solve the Laplacian problem in a multipatch
+% geometry. The Dirichlet datum can be given either by a function handle or
+% by an array of degrees of freedom whose size is the number of Dirichlet 
+% boundary degrees of freedom. 
 %
 % Example to solve the diffusion problem
 %
@@ -11,7 +14,7 @@
 % USAGE:
 %
 %  [geometry, msh, space, u] = 
-%          mp_solve_laplace (problem_data, method_data)
+%          mp_solve_laplace_generalized (problem_data, method_data)
 %
 % INPUT:
 %
@@ -22,7 +25,9 @@
 %    - c_diff:       diffusion coefficient (epsilon in the equation)
 %    - f:            source term
 %    - g:            function for Neumann condition (if nmnn_sides is not empty)
-%    - h:            function for Dirichlet boundary condition
+%    - h:            function for Dirichlet boundary condition, or array of degrees 
+%                      of freedom (float) whose size is the number of Dirichlet 
+%                      boundary degrees of freedom. 
 %
 %  method_data : a structure with discretization data. Its fields are:
 %    - degree:     degree of the spline functions.
@@ -40,6 +45,7 @@
 %
 % Copyright (C) 2009, 2010 Carlo de Falco
 % Copyright (C) 2010, 2011, 2013, 2015, 2017 Rafael Vazquez
+% Copyright (C) 2023 Ondine Chanon
 %
 %    This program is free software: you can redistribute it and/or modify
 %    it under the terms of the GNU General Public License as published by
@@ -55,7 +61,7 @@
 %    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function [geometry, msh, space, u] = ...
-              my_mp_solve_laplace (problem_data, method_data)
+              mp_solve_laplace_generalized(problem_data, method_data)
 
 % Extract the fields from the data structures into local variables
 data_names = fieldnames (problem_data);
@@ -108,30 +114,33 @@ end
 % Apply Dirichlet boundary conditions
 u = zeros (space.ndof, 1);
 
-  boundaries = msh.boundaries;
-  Nbnd = cumsum ([0, boundaries.nsides]);
-  bnd_dofs = [];
-  for iref = drchlt_sides
-    iref_patch_list = Nbnd(iref)+1:Nbnd(iref+1);
-    boundary_gnum = space.boundary.gnum;
-    bnd_dofs = union (bnd_dofs, [boundary_gnum{iref_patch_list}], 'stable');
-  end
-  drchlt_dofs = space.boundary.dofs(bnd_dofs);
-  u_drchlt = h;
-  u(drchlt_dofs) = u_drchlt;
+if isa(h, "function_handle")
+    [u_drchlt, drchlt_dofs] = sp_drchlt_l2_proj (space, msh, h, drchlt_sides);
 
-% [u_drchlt, drchlt_dofs] = sp_drchlt_l2_proj (space, msh, h, drchlt_sides);
-% u(drchlt_dofs) = u_drchlt;
-% 
-% % Apply Dirichlet boundary conditions in weak form, by Nitsche's method
-% if (exist ('weak_drchlt_sides', 'var'))
-%   [N_mat, N_rhs] = sp_weak_drchlt_bc_laplace (space, msh, weak_drchlt_sides, h, c_diff, Cpen);
-%   stiff_mat = stiff_mat - N_mat;
-%   rhs = rhs + N_rhs;
-% end
+    % Apply Dirichlet boundary conditions in weak form, by Nitsche's method
+    if (exist ('weak_drchlt_sides', 'var'))
+      [N_mat, N_rhs] = sp_weak_drchlt_bc_laplace (space, msh, weak_drchlt_sides, h, c_diff, Cpen);
+      stiff_mat = stiff_mat - N_mat;
+      rhs = rhs + N_rhs;
+    end
+elseif isa(h, "float")
+    boundaries = msh.boundaries;
+    Nbnd = cumsum ([0, boundaries.nsides]);
+    bnd_dofs = [];
+    for iref = drchlt_sides
+        iref_patch_list = Nbnd(iref)+1:Nbnd(iref+1);
+        boundary_gnum = space.boundary.gnum;
+        bnd_dofs = union (bnd_dofs, [boundary_gnum{iref_patch_list}], 'stable');
+    end
+    drchlt_dofs = space.boundary.dofs(bnd_dofs);
+    u_drchlt = h;
+else
+    error("The Dirichlet data h should either be a function_handle or an array of float.")
+end
+u(drchlt_dofs) = u_drchlt;
 
 int_dofs = setdiff (1:space.ndof, drchlt_dofs);
-rhs(int_dofs) = rhs(int_dofs) - stiff_mat(int_dofs, drchlt_dofs)*u_drchlt;
+rhs(int_dofs) = rhs(int_dofs) - stiff_mat(int_dofs, drchlt_dofs) * u_drchlt;
 
 % Solve the linear system
 u(int_dofs) = stiff_mat(int_dofs, int_dofs) \ rhs(int_dofs);

@@ -4,7 +4,7 @@ clc
 
 %% Set problem data
 % -- To reproduce [BCV2022], Section 6.2.1, geometry \Omega_\varepsilon^5 --
-eps_values = 1e-2 ./ 2.^(0:6);
+epsilon_values = 1e-2 ./ 2.^(0:6);
 problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) 10 * cos(3 * pi * x) .* sin(5 * pi * y); 
@@ -24,7 +24,7 @@ filename = 'results/test07_complex';
 saveIt = false;
 plotIt = true;
 
-[problem_data, problem_data_0, problem_data_F] = determineBC(problem_data);
+[problem_data, problem_data_0, problem_data_Fp] = set_boundary_conditions(problem_data);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -33,75 +33,77 @@ method_data.nquad = [5 5];
 
 
 %% Main
-number_of_epsilons = numel(eps_values);
-error_h1s = zeros(1, number_of_epsilons);
-error_h1s_Omega_star = zeros(1, number_of_epsilons);
-error_h1s_F = zeros(1, number_of_epsilons);
-error_h1s_from_boundary = zeros(1, number_of_epsilons);
-error_h1s_from_positive_boundary = zeros(1, number_of_epsilons);
-error_h1s_from_negative_boundary = zeros(1, number_of_epsilons);
+number_of_epsilons = numel(epsilon_values);
+error_H1s = zeros(1, number_of_epsilons);
+error_H1s_Omega_star = zeros(1, number_of_epsilons);
+error_H1s_Fp = zeros(1, number_of_epsilons);
+error_H1s_boundary_representation = zeros(1, number_of_epsilons);
+error_H1s_boundary_representation_Fp = zeros(1, number_of_epsilons);
+error_H1s_boundary_representation_Fn = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
-estimator_positive_feature = zeros(1, number_of_epsilons);
-estimator_negative_feature = zeros(1, number_of_epsilons);
+estimator_Fp = zeros(1, number_of_epsilons);
+estimator_Fn = zeros(1, number_of_epsilons);
 norm_of_u = zeros(1, number_of_epsilons);
-relative_error_h1s = zeros(1, number_of_epsilons);
+relative_error_H1s = zeros(1, number_of_epsilons);
 
 for iter = 1:number_of_epsilons
-    epsilon = eps_values(iter);
+    epsilon = epsilon_values(iter);
     fprintf('----- epsilon = %f -----\n', epsilon);
     
     % 1) BUILD GEOMETRY
-    [srf_0, srf, srf_F_positive] = buildGeometry(epsilon); 
+    [srf_0, srf, srf_Fp] = build_geometry(epsilon); 
     problem_data.geo_name = srf;
     problem_data_0.geo_name = srf_0;
-    problem_data_F.geo_name = srf_F_positive;
+    problem_data_Fp.geo_name = srf_Fp;
 
     % 2) SOLVE THE EXACT PROBLEM
-    [omega, msh, space, u] = mp_solve_laplace (problem_data, method_data);
+    [omega, msh, space, u] = mp_solve_laplace_generalized(problem_data, method_data);
 
     % 3a) SOLVE THE DEFEATURED PROBLEM
-    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace (problem_data_0, method_data);
-    problem_data_F.h = buildDirichletConditionExtPb(msh_0, problem_data_0, space_0, u_0);
+    [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
+    problem_data_Fp.h = extract_boundary_dofs(msh_0, space_0, u_0, problem_data_0.gamma0_sides);
 
     % 3b) SOLVE THE EXTENSION PROBLEM
-    [F, msh_F, space_F, u_0tilde] = my_mp_solve_laplace (problem_data_F, method_data);
+    [Fp, msh_Fp, space_Fp, u_0tilde] = mp_solve_laplace_generalized(problem_data_Fp, method_data);
 
-    % 4a) COMPUTE ERROR
-    [error_h1s(iter), error_h1s_Omega_star(iter), error_h1s_F(iter)] = errh1s_positive(msh, space, u, msh_0, ...
-        space_0, u_0, msh_F, space_F, u_0tilde, problem_data.omega0_patches, ...
-        problem_data_F.F_patches, problem_data_0.omega_patches);
-
-    % 4b) COMPUTE ESTIMATOR AND ERROR FROM BOUNDARY
-    [estimator_positive_feature(iter), ~, ~, error_h1s_from_positive_boundary(iter)] = ...
-        est_positive(msh_F, space_F, u_0tilde, problem_data_F.gamma0_sides, problem_data_F.gammae_sides,...
-            problem_data_0.g, problem_data.g, problem_data_F.F_patches, ...
+    % 4a) COMPUTE THE DEFEATURING ESTIMATOR
+    [estimator_Fp(iter), ~, ~, error_H1s_boundary_representation_Fp(iter)] = ...
+        est_positive(msh_Fp, space_Fp, u_0tilde, problem_data_Fp.gamma0_sides, problem_data_Fp.gammae_sides,...
+            problem_data_0.g, problem_data.g, problem_data_Fp.F_patches, ...
             problem_data.omega0_patches, space, u);
-    [estimator_negative_feature(iter), ~, error_h1s_from_negative_boundary(iter)] = ...
+    [estimator_Fn(iter), ~, error_H1s_boundary_representation_Fn(iter)] = ...
         est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
             problem_data_0.omega_patches, problem_data.gamma_sides, ...
             problem_data.omega0_patches, msh, space, u);
-    
-    norm_of_u(iter) = errh1s_positive(msh, space, u, ...
-        msh_0, space_0, zeros(size(u_0)), msh_F, space_F, zeros(size(u_0tilde)), problem_data.omega0_patches, ...
-        problem_data_F.F_patches, problem_data_0.omega_patches);
-    relative_error_h1s(iter) = error_h1s(iter)/norm_of_u(iter);
 
-    estimator(iter) = sqrt(estimator_positive_feature(iter)^2 + estimator_negative_feature(iter)^2); 
-    error_h1s_from_boundary(iter) = sqrt(error_h1s_from_positive_boundary(iter)^2 ...
-                                          + error_h1s_from_negative_boundary(iter)^2);
+    estimator(iter) = sqrt(estimator_Fp(iter)^2 + estimator_Fn(iter)^2); 
+
+    error_H1s_boundary_representation(iter) = sqrt(error_H1s_boundary_representation_Fp(iter)^2 ...
+                                                   + error_H1s_boundary_representation_Fn(iter)^2);
+
+    % 4b) COMPUTE THE DEFEATURING ERROR
+    [error_H1s(iter), error_H1s_Omega_star(iter), error_H1s_Fp(iter)] = ...
+        defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+                              msh, space, u, problem_data.omega0_patches, ...
+                              msh_Fp, space_Fp, u_0tilde, problem_data_Fp.F_patches);
+
+    norm_of_u(iter) = error_H1s_in_patches(msh, space, u, 1:msh.npatch, ...
+                                           msh, space, zeros(size(u)));
+    relative_error_H1s(iter) = error_H1s(iter) / norm_of_u(iter);
 end
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'eps_values', 'error_h1s', 'error_h1s_Omega_star', 'error_h1s_F', ...
-        'error_h1s_from_boundary', 'error_h1s_from_positive_boundary', 'error_h1s_from_negative_boundary',...
-        'estimator', 'estimator_positive_feature', 'estimator_negative_feature', 'norm_of_u', 'relative_error_h1s')
+    save(filename, 'epsilon_values', 'error_H1s', 'error_H1s_Omega_star', 'error_H1s_Fp', ...
+        'error_H1s_boundary_representation', 'error_H1s_boundary_representation_Fp', ...
+        'error_H1s_boundary_representation_Fn', 'estimator', 'estimator_Fp', ...
+        'estimator_Fn', 'norm_of_u', 'relative_error_H1s')
 end
 if plotIt
     fig = figure;
-    loglog(eps_values, error_h1s, '+-r', eps_values, estimator, '+-b', ...
-           eps_values, eps_values, 'k:');
+    loglog(epsilon_values, error_H1s, '+-r', epsilon_values, estimator, '+-b', ...
+           epsilon_values, epsilon_values, 'k:');
     grid on
     legend('|u-u_0|_{1,\Omega}', 'Estimator', '\epsilon', 'Location', 'northwest')
     if saveIt
@@ -111,12 +113,12 @@ end
 
 fprintf("For epsilon (feature's side length) = %e, \n", epsilon)
 fprintf('    * Estimator                           = %e \n', estimator(end))
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega} = %e \n', error_h1s(end))
-fprintf('    * Effectivity index                   = %f \n', estimator(end)/error_h1s(end))
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega} = %e \n', error_H1s(end))
+fprintf('    * Effectivity index                   = %f \n', estimator(end) / error_H1s(end))
 
 
 %% Auxiliary functions
-function [srf_0, srf, srf_F_positive] = buildGeometry(epsilon)
+function [srf_0, srf, srf_F_positive] = build_geometry(epsilon)
     extension_factor = 4; 
 
     srf_tot(1) = nrb4surf([0, 0], [0.5 - epsilon, 0], [0, 1 - epsilon], [0.5 - epsilon, 1 - epsilon]);
@@ -156,10 +158,10 @@ function [srf_0, srf, srf_F_positive] = buildGeometry(epsilon)
     srf = srf_tot([1:6 8 9]);
 end
 
-function [problem_data, problem_data_0, problem_data_F] = determineBC(problem_data)
+function [problem_data, problem_data_0, problem_data_Fp] = set_boundary_conditions(problem_data)
     problem_data_0 = problem_data;
-    problem_data_F = problem_data;
-    problem_data_F = rmfield(problem_data_F, 'h');
+    problem_data_Fp = problem_data;
+    problem_data_Fp = rmfield(problem_data_Fp, 'h');
     
     % Exact problem
     problem_data.nmnn_sides = [1 5 6 8:16]; 
@@ -176,9 +178,9 @@ function [problem_data, problem_data_0, problem_data_F] = determineBC(problem_da
     problem_data_0.gamma_sides([3 6 8]) = {4, 2, 1};
     
     % Extension problem
-    problem_data_F.nmnn_sides = [1 2 4]; 
-    problem_data_F.drchlt_sides = 3; 
-    problem_data_F.gamma0_sides = 3; 
-    problem_data_F.gammae_sides = {[]}; % relative to each patch
-    problem_data_F.F_patches = 1;
+    problem_data_Fp.nmnn_sides = [1 2 4]; 
+    problem_data_Fp.drchlt_sides = 3; 
+    problem_data_Fp.gamma0_sides = 3; 
+    problem_data_Fp.gammae_sides = {[]}; % relative to each patch
+    problem_data_Fp.F_patches = 1;
 end
