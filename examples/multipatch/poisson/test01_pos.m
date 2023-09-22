@@ -13,7 +13,9 @@ problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) 10 * cos(3 * pi * x) .* sin(5 * pi * y); 
 problem_data.h = @(x, y, ind) zeros(size(x));
+
 [problem_data, problem_data_0, problem_data_F] = set_boundary_conditions(problem_data);
+defeaturing_data = set_defeaturing_data(problem_data, problem_data_0, problem_data_F);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -30,7 +32,7 @@ error_H1s_boundary_representation = zeros(1, number_of_epsilons);
 estimator = zeros(1, number_of_epsilons);
 norm_of_u = zeros(1, number_of_epsilons);
 relative_error_H1s = zeros(1, number_of_epsilons);
-measure_of_gamma = zeros(1, number_of_epsilons);
+measure_of_gamma_0 = zeros(1, number_of_epsilons);
 
 for iter = 1:number_of_epsilons
     epsilon = epsilon_values(iter);
@@ -47,21 +49,23 @@ for iter = 1:number_of_epsilons
     
     % 3a) SOLVE THE DEFEATURED PROBLEM
     [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
-    problem_data_F.h = extract_boundary_dofs(msh_0, space_0, u_0, problem_data_0.gamma0_sides);
+    problem_data_F.h = extract_boundary_dofs(msh_0, space_0, u_0, defeaturing_data.gamma_0p_sides_in_omega0);
 
     % 3b) SOLVE THE EXTENSION PROBLEM
     [F, msh_F, space_F, u_0tilde] = mp_solve_laplace_generalized(problem_data_F, method_data);
      
     % 4a) COMPUTE THE DEFEATURING ESTIMATOR
-    [estimator(iter), measure_of_gamma(iter), ~, error_H1s_boundary_representation(iter)] = ...
-        est_positive(msh_F, space_F, u_0tilde, problem_data_F.gamma0_sides, problem_data_F.gammae_sides,...
-        problem_data_0.g, problem_data.g, problem_data_F.F_patches, problem_data.omega0_patches, space, u);      
+    [estimator(iter), measure_of_gamma_0(iter)] = estimate_defeaturing_error_H1s(defeaturing_data, ...
+                                                        msh_0, space_0, u_0, msh_F, space_F, u_0tilde);
 
     % 4b) COMPUTE THE DEFEATURING ERROR
     [error_H1s(iter), error_H1s_0(iter), error_H1s_F(iter)] = ...
         defeaturing_error_H1s(msh_0, space_0, u_0, [], ...
-                              msh, space, u, problem_data.omega0_patches, ...
+                              msh, space, u, defeaturing_data.omega_star_patches_in_omega, ...
                               msh_F, space_F, u_0tilde);
+    error_H1s_boundary_representation(iter) = ...
+        defeaturing_error_H1s_boundary_representation(defeaturing_data, msh, space, u, ...
+                                                      msh_0, space_0, u_0, msh_F, space_F, u_0tilde);
 
     norm_of_u(iter) = error_H1s_in_patches(msh, space, u, 1:msh.npatch, msh, space, zeros(size(u)));
     relative_error_H1s(iter) = error_H1s(iter) / norm_of_u(iter);
@@ -71,7 +75,7 @@ end
 %% Display and save the results
 if saveIt
     save(filename, 'epsilon_values', 'error_H1s', 'error_H1s_0', 'error_H1s_F', ...
-        'error_H1s_boundary_representation', 'estimator', 'measure_of_gamma', ...
+        'error_H1s_boundary_representation', 'estimator', 'measure_of_gamma_0', ...
         'norm_of_u', 'relative_error_H1s')
 end
 if plotIt
@@ -124,17 +128,22 @@ function [problem_data, problem_data_0, problem_data_F] = set_boundary_condition
     % Exact problem
     problem_data.nmnn_sides = [1 3 5 7 8 9 10]; 
     problem_data.drchlt_sides = [2 4 6];
-    problem_data.omega0_patches = 1:3;
 
     % Simplified problem
     problem_data_0.nmnn_sides = [1 3 5 6 8];
     problem_data_0.drchlt_sides = [2 4 7];
-    problem_data_0.gamma0_sides = 5; 
     
     % Extension problem
     problem_data_F.nmnn_sides = [1 2 4]; 
     problem_data_F.drchlt_sides = 3; 
-    problem_data_F.gamma0_sides = 3; 
-    problem_data_F.gammae_sides = {[]};
-    problem_data_F.F_patches = 1;
+end
+
+function defeaturing_data = set_defeaturing_data(problem_data, problem_data_0, problem_data_F)
+    defeaturing_data.omega_star_patches_in_omega = 1:3;
+    defeaturing_data.Fp_patches_in_tildeFp = 1;
+
+    defeaturing_data.gamma_0p_sides_in_omega0 = 5; 
+    defeaturing_data.gamma_0p_sides_in_tildeFp = 3;
+
+    defeaturing_data = decompose_into_single_defeaturing_terms(defeaturing_data, problem_data, problem_data_0, problem_data_F);
 end

@@ -20,6 +20,7 @@ problem_data.f = @(x, y) zeros(size(x));
 problem_data.h = @(x, y, ind) cos(pi * x) + 10 * cos(5 * pi * x);
 
 [problem_data, problem_data_0, problem_data_Ftilde] = set_boundary_conditions(problem_data, feature_extension);
+defeaturing_data = set_defeaturing_data(problem_data, problem_data_0, problem_data_Ftilde, feature_extension);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -43,27 +44,34 @@ end
 
 % 3a) SOLVE THE DEFEATURED PROBLEM
 [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
-problem_data_Ftilde.h = extract_boundary_dofs(msh_0, space_0, u_0, problem_data_0.gamma0_sides);
+problem_data_Ftilde.h = extract_boundary_dofs(msh_0, space_0, u_0, defeaturing_data.gamma_0p_sides_in_omega0);
 
 % 3b) SOLVE THE (EXTENDED) EXTENSION PROBLEM
 [Ftilde, msh_Ftilde, space_Ftilde, u_0tilde] = mp_solve_laplace_generalized(problem_data_Ftilde, method_data);
 
 % 4a) COMPUTE THE DEFEATURING ESTIMATOR
-[estimator, measure_of_gamma0, measure_of_gammae, error_H1s_boundary_representation] = ...
-    est_positive(msh_Ftilde, space_Ftilde, u_0tilde, problem_data_Ftilde.gamma0_sides,...
-        problem_data_Ftilde.gammae_sides, problem_data_0.g, problem_data.g,...
-        problem_data_Ftilde.F_patches, problem_data.omega0_patches, space, u);
+if strcmp(feature_extension, 'F')
+    [estimator, measure_of_gamma_0] = estimate_defeaturing_error_H1s(defeaturing_data, ...
+                                                            msh_0, space_0, u_0, msh_Ftilde, space_Ftilde, u_0tilde);
+    measure_of_gamma_r = 0;
+else
+    [estimator, measure_of_gamma_0, measure_of_gamma_r] = estimate_defeaturing_error_H1s(defeaturing_data, ...
+                                                            msh_0, space_0, u_0, msh_Ftilde, space_Ftilde, u_0tilde);
+end
 
 % 4b) COMPUTE THE DEFEATURING ERROR
 [error_H1s, error_H1s_0, error_H1s_F] = defeaturing_error_H1s(msh_0, space_0, u_0, [], ...
-                                              msh, space, u, problem_data.omega0_patches, ...
-                                              msh_Ftilde, space_Ftilde, u_0tilde, problem_data_Ftilde.F_patches);
+                                              msh, space, u, defeaturing_data.omega_star_patches_in_omega, ...
+                                              msh_Ftilde, space_Ftilde, u_0tilde, defeaturing_data.Fp_patches_in_tildeFp);
+error_H1s_boundary_representation = ...
+    defeaturing_error_H1s_boundary_representation(defeaturing_data, msh, space, u, ...
+                                                  msh_0, space_0, u_0, msh_Ftilde, space_Ftilde, u_0tilde);
 
 
 %% Display and save the results
 if saveIt
     save(filename, 'feature_extension', 'error_H1s', 'error_H1s_0', 'error_H1s_F', ...
-        'error_H1s_boundary_representation', 'estimator', 'measure_of_gamma0', 'measure_of_gammae')
+        'error_H1s_boundary_representation', 'estimator', 'measure_of_gamma_0', 'measure_of_gamma_r')
 end
 
 fprintf('For feature extension = %s, \n', feature_extension)
@@ -75,38 +83,6 @@ fprintf('    * Effectivity index                                  = %f \n', esti
 
 
 %% Auxiliary functions
-function [problem_data, problem_data_0, problem_data_Ftilde] = set_boundary_conditions(problem_data, feature_extension)
-    problem_data_0 = problem_data;
-    problem_data_Ftilde = problem_data;
-    problem_data_Ftilde = rmfield(problem_data_Ftilde, 'h');
-    
-    % Exact problem
-    problem_data.nmnn_sides = [1:3 5 7 8]; 
-    problem_data.drchlt_sides = [4 6];
-    problem_data.omega0_patches = 1:4;
-
-    % Simplified problem
-    problem_data_0.nmnn_sides = [1:5 7 8 10];
-    problem_data_0.drchlt_sides = [6 9];
-    problem_data_0.gamma0_sides = [2 5 7 10]; 
-    
-    if strcmp(feature_extension, 'F')
-        % Extension problem
-        problem_data_Ftilde.nmnn_sides = [2 5]; 
-        problem_data_Ftilde.drchlt_sides = [1 3 4 6];
-        problem_data_Ftilde.gamma0_sides = [1 3 4 6];
-        problem_data_Ftilde.F_patches = 1:3;
-        problem_data_Ftilde.gammae_sides = cell(3,1);
-    else
-        % Extended extension problem
-        problem_data_Ftilde.nmnn_sides = 5:8; 
-        problem_data_Ftilde.drchlt_sides = 1:4;
-        problem_data_Ftilde.gamma0_sides = 1:4;
-        problem_data_Ftilde.F_patches = 1:3;
-        problem_data_Ftilde.gammae_sides = {4, [], 2}; % side local to patch, for each patch
-    end
-end
-
 function [srf_0, srf, srf_F, srf_Ftilde] = build_geometry(feature_extension)
     epsilon = 0.5;
     srf(6) = nrbsquare([0.5, 0.5], epsilon / 5, epsilon / 5);
@@ -183,4 +159,46 @@ function [srf_0, srf, srf_F, srf_Ftilde] = build_geometry(feature_extension)
         error('Unknown feature extension.')
     end
     srf = srf(1:7);
+end
+
+function [problem_data, problem_data_0, problem_data_Ftilde] = set_boundary_conditions(problem_data, feature_extension)
+    problem_data_0 = problem_data;
+    problem_data_Ftilde = problem_data;
+    problem_data_Ftilde = rmfield(problem_data_Ftilde, 'h');
+    
+    % Exact problem
+    problem_data.nmnn_sides = [1:3 5 7 8]; 
+    problem_data.drchlt_sides = [4 6];
+
+    % Simplified problem
+    problem_data_0.nmnn_sides = [1:5 7 8 10];
+    problem_data_0.drchlt_sides = [6 9];
+    
+    if strcmp(feature_extension, 'F')
+        % Extension problem
+        problem_data_Ftilde.nmnn_sides = [2 5]; 
+        problem_data_Ftilde.drchlt_sides = [1 3 4 6];
+    else
+        % Extended extension problem
+        problem_data_Ftilde.nmnn_sides = 5:8; 
+        problem_data_Ftilde.drchlt_sides = 1:4;
+    end
+end
+
+function defeaturing_data = set_defeaturing_data(problem_data, problem_data_0, problem_data_F, feature_extension)
+    defeaturing_data.omega_star_patches_in_omega = 1:4;
+    defeaturing_data.Fp_patches_in_tildeFp = 1:3;
+
+    defeaturing_data.gamma_0p_sides_in_omega0 = [2 5 7 10]; 
+    if strcmp(feature_extension, 'F')
+        defeaturing_data.gamma_0p_sides_in_tildeFp = [1 3 4 6];
+    else
+        defeaturing_data.gamma_0p_sides_in_tildeFp = 1:4;
+
+        defeaturing_data.gamma_r_sides_in_omega = [7 8];
+        defeaturing_data.gamma_r_sides_in_tildeFp.patch = [1 3];
+        defeaturing_data.gamma_r_sides_in_tildeFp.local_side_in_patch = [4 2];
+    end
+
+    defeaturing_data = decompose_into_single_defeaturing_terms(defeaturing_data, problem_data, problem_data_0, problem_data_F);
 end

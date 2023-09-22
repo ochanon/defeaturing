@@ -4,16 +4,16 @@ clc
 
 % -- Test reproducing [BCV2022], Section 6.1.2, and [AC2023+], Section 6.1.1 --
 
+filename = 'results/test11_neg_multifeature';
+saveResults = false;
+plotExactGeometry = false; % Warning: drawing the geometry may take very long if the number of elements is high.
+
 %% Set problem data
 % -- To reproduce [BCV2022], Section 6.1.2, choose 'circles' below. --
 % -- To reproduce [AC2023+], Section 6.1.1, choose the type of feature you want to test. -- 
 feature_type = 'circles';
 % feature_type = 'squares';
 % --
-
-filename = 'results/test11_neg_multifeature';
-saveResults = false;
-plotExactGeometry = false; % Warning: drawing the geometry may take very long if the number of elements is high.
 
 centers = [0.0011, 0.0011; 0.89, 0.89]; 
 radiuses = [1e-3; 1e-1]; 
@@ -100,17 +100,17 @@ method_data.reparam = ref_trimming_reparameterization_2D(n_refs, ...
 [~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming(exact_problem_data, method_data);
 
 % 4) COMPUTE ERROR AND ESTIMATOR
-[estimators, measures_of_gamma, errors_h1s_from_boundary] = ...
+[estimators, measures_of_gamma, error_H1s_boundary_representation] = ...
     est_negative (u_0, msh_trimmed, sp_trimmed, exact_problem_data.g, defeatured_boundaries, u);
-error_h1s = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
+error_H1s = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
 norm_of_u = errh1s_negative (zeros(size(u_0)), msh_trimmed, sp_trimmed, u);
-relative_error_h1s = error_h1s./norm_of_u;
+relative_error_H1s = error_H1s./norm_of_u;
 
 
 %% Display and save the results
 if saveResults
-    save(filename, 'estimators', 'measures_of_gamma', 'errors_h1s_from_boundary',...
-         'error_h1s', 'norm_of_u', 'relative_error_h1s')
+    save(filename, 'estimators', 'measures_of_gamma', 'error_H1s_boundary_representation',...
+         'error_H1s', 'norm_of_u', 'relative_error_H1s')
 end
 if plotExactGeometry
     plot_trimmed_geometry(method_data.reparam); 
@@ -123,9 +123,9 @@ fprintf('For the feature type = %s, \n', feature_type)
 fprintf('    * Estimator for F_1 (small hole)                   = %e \n', estimators(1))
 fprintf('    * Estimator for F_2 (large hole)                   = %e \n', estimators(2))
 fprintf('    * Overall estimator                                = %e \n', norm(estimators))
-fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_h1s)
-fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_h1s)
-fprintf('    * Effectivity index                                = %f \n', norm(estimators)/error_h1s)
+fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_H1s)
+fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_H1s)
+fprintf('    * Effectivity index                                = %f \n', norm(estimators)/error_H1s)
 
 
 %% Auxiliary function

@@ -22,6 +22,7 @@ problem_data.f = @(x, y) zeros(size(x));
 problem_data.h = @(x, y, ind) 40 * cos(pi * x) + 10 * cos(5 * pi * x);
 
 [problem_data, problem_data_0, problem_data_Fp] = set_boundary_conditions(problem_data);
+defeaturing_data = set_defeaturing_data(problem_data, problem_data_0, problem_data_Fp);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -42,39 +43,29 @@ problem_data_Fp.geo_name = srf_Fp;
 
 % 3a) SOLVE THE DEFEATURED PROBLEM
 [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
-problem_data_Fp.h = extract_boundary_dofs(msh_0, space_0, u_0, problem_data_0.gamma0_sides);
+problem_data_Fp.h = extract_boundary_dofs(msh_0, space_0, u_0, defeaturing_data.gamma_0p_sides_in_omega0);
 
 % 3b) SOLVE THE EXTENSION PROBLEM
 [Fp, msh_Fp, space_Fp, u_0tilde] = mp_solve_laplace_generalized(problem_data_Fp, method_data);
 
 % 4a) COMPUTE THE DEFEATURING ESTIMATOR
-[estimator_Fp, measure_of_gamma0, ~, error_H1s_boundary_representation_Fp] = ...
-    est_positive(msh_Fp, space_Fp, u_0tilde, problem_data_Fp.gamma0_sides, problem_data_Fp.gammae_sides,...
-        problem_data_0.g, problem_data.g, problem_data_Fp.F_patches, ...
-        problem_data.omega0_patches, space, u);
-[estimator_Fn, measure_of_gamma, error_H1s_boundary_representation_Fn] = ...
-    est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
-        problem_data_0.omega_patches, problem_data.gamma_sides, ...
-        problem_data.omega0_patches, msh, space, u);
-        
-estimator = sqrt(estimator_Fp^2 + estimator_Fn^2); 
-
-error_H1s_boundary_representation = sqrt(error_H1s_boundary_representation_Fp^2 ...
-                                         + error_H1s_boundary_representation_Fn^2);
+[estimator, measure_of_gamma_n, measure_of_gamma_0p] = ...
+    estimate_defeaturing_error_H1s(defeaturing_data, msh_0, space_0, u_0, msh_Fp, space_Fp, u_0tilde);
 
 % 4b) COMPUTE THE DEFEATURING ERROR
 [error_H1s, error_H1s_Omega_star, error_H1s_Fp] = ...
-    defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
-                          msh, space, u, problem_data.omega0_patches, ...
-                          msh_Fp, space_Fp, u_0tilde, problem_data_Fp.F_patches);
+    defeaturing_error_H1s(msh_0, space_0, u_0, defeaturing_data.omega_star_patches_in_omega0, ...
+                          msh, space, u, defeaturing_data.omega_star_patches_in_omega, ...
+                          msh_Fp, space_Fp, u_0tilde, defeaturing_data.Fp_patches_in_tildeFp);
+error_H1s_boundary_representation = ...
+    defeaturing_error_H1s_boundary_representation(defeaturing_data, msh, space, u, ...
+                          msh_0, space_0, u_0, msh_Fp, space_Fp, u_0tilde);
 
 
 %% Display and save the results
 if saveIt
-    save(filename, 'feature_side_length', 'delta', 'error_H1s', 'error_H1s_Omega_star', ...
-        'error_H1s_Fp', 'error_H1s_boundary_representation', 'measure_of_gamma0', 'measure_of_gamma', ...
-        'error_H1s_boundary_representation_Fp', 'error_H1s_boundary_representation_Fn', ...
-        'estimator', 'estimator_Fp', 'estimator_Fn')
+    save(filename, 'feature_side_length', 'delta', 'error_H1s', 'error_H1s_Omega_star', 'error_H1s_Fp',...
+        'error_H1s_boundary_representation', 'measure_of_gamma_n', 'measure_of_gamma_0p', 'estimator')
 end
 
 fprintf('For delta = %e, \n', delta)
@@ -154,21 +145,27 @@ function [problem_data, problem_data_0, problem_data_Fp] = set_boundary_conditio
     % Exact problem
     problem_data.nmnn_sides = [1 6 7 9:18]; 
     problem_data.drchlt_sides = [2 3 4 5 8];
-    problem_data.gamma_sides = [6 11 13]; % for negative features
-    problem_data.omega0_patches = 1:9;
 
     % Simplified problem
     problem_data_0.nmnn_sides = [1 6 8:14];
     problem_data_0.drchlt_sides = [2 3 4 5 7];
-    problem_data_0.gamma0_sides = 10; % for the Dirichlet extension
-    problem_data_0.omega_patches = [1:8 10];
-    problem_data_0.gamma_sides = cell(10, 1); % relative to each patch
-    problem_data_0.gamma_sides([4 8 10]) = {4, 2, 1};
     
     % Extension problem
     problem_data_Fp.nmnn_sides = [1 2 4]; 
     problem_data_Fp.drchlt_sides = 3; 
-    problem_data_Fp.gamma0_sides = 3; 
-    problem_data_Fp.gammae_sides = {[]}; % relative to each patch
-    problem_data_Fp.F_patches = 1; 
+end
+
+function defeaturing_data = set_defeaturing_data(problem_data, problem_data_0, problem_data_Fp)
+    defeaturing_data.omega_star_patches_in_omega0 = [1:8 10];
+    defeaturing_data.omega_star_patches_in_omega = 1:9;
+    defeaturing_data.Fp_patches_in_tildeFp = 1; 
+
+    defeaturing_data.gamma_n_sides_in_omega = [6 11 13]; 
+    defeaturing_data.gamma_n_sides_in_omega0.patch = [4 8 10];
+    defeaturing_data.gamma_n_sides_in_omega0.local_side_in_patch = [4 2 1];
+
+    defeaturing_data.gamma_0p_sides_in_omega0 = 10;
+    defeaturing_data.gamma_0p_sides_in_tildeFp = 3; 
+
+    defeaturing_data = decompose_into_single_defeaturing_terms(defeaturing_data, problem_data, problem_data_0, problem_data_Fp);
 end

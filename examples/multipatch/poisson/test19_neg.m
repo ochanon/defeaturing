@@ -27,7 +27,9 @@ problem_data.c_diff = @(x, y) ones(size(x));
 problem_data.g = @(x, y, ind) zeros(size(x));
 problem_data.f = @(x, y) ones(size(x)); 
 problem_data.h = @(x, y, ind) zeros(size(x));
+
 [problem_data, problem_data_0] = set_boundary_conditions(problem_data, number_of_star_branches);
+defeaturing_data = set_defeaturing_data(problem_data, number_of_star_branches);
 
 method_data.degree = [3 3];
 method_data.regularity = [2 2];
@@ -60,14 +62,13 @@ for iter = 1:number_of_interior_radiuses
     [omega_0, msh_0, space_0, u_0] = mp_solve_laplace_generalized(problem_data_0, method_data);
     
     % 4a) COMPUTE THE DEFEATURING ESTIMATOR
-    [estimator(iter), measure_of_gamma(iter), error_H1s_boundary_representation(iter)] = ...
-        est_negative(msh_0, space_0, u_0, problem_data_0.gamma_sides, problem_data.g,...
-            problem_data_0.omega_patches, problem_data.gamma_sides, ...
-            problem_data.omega0_patches, msh, space, u);
+    [estimator(iter), measure_of_gamma(iter)] = estimate_defeaturing_error_H1s(defeaturing_data, msh_0, space_0, u_0);
 
     % 4b) COMPUTE THE DEFEATURING ERROR
-    error_H1s(iter) = defeaturing_error_H1s(msh_0, space_0, u_0, problem_data_0.omega_patches, ...
+    error_H1s(iter) = defeaturing_error_H1s(msh_0, space_0, u_0, defeaturing_data.omega_star_patches_in_omega0, ...
                                             msh, space, u);
+    error_H1s_boundary_representation(iter) = ...
+        defeaturing_error_H1s_boundary_representation(defeaturing_data, msh, space, u, msh_0, space_0, u_0);
 
     norm_of_u(iter) = error_H1s_in_patches(msh, space, u, 1:msh.npatch, ...
                                            msh, space, zeros(size(u)));
@@ -149,13 +150,18 @@ function [problem_data, problem_data_0] = set_boundary_conditions(problem_data, 
     % Exact problem
     problem_data.nmnn_sides = 1:2:4 * number_of_star_branches;
     problem_data.drchlt_sides = 2:2:4 * number_of_star_branches;
-    problem_data.gamma_sides = 1:2:4 * number_of_star_branches;
-    problem_data.omega0_patches = 1:2 * number_of_star_branches;
 
     % Simplified problem
-    problem_data_0.nmnn_sides = [];
+    problem_data_0.nmnn_sides = []; 
     problem_data_0.drchlt_sides = 1:2 * number_of_star_branches;
-    problem_data_0.omega_patches = 1:2 * number_of_star_branches;
-    problem_data_0.gamma_sides = cell(3 * number_of_star_branches, 1); 
-    [problem_data_0.gamma_sides{1:2 * number_of_star_branches}] = deal(3); % relative to each patch
+end
+
+function defeaturing_data = set_defeaturing_data(problem_data, number_of_star_branches)
+    defeaturing_data.omega_star_patches_in_omega0 = 1:2 * number_of_star_branches;
+
+    defeaturing_data.gamma_n_sides_in_omega = 1:2:4 * number_of_star_branches;
+    defeaturing_data.gamma_n_sides_in_omega0.patch = 1:2 * number_of_star_branches;
+    defeaturing_data.gamma_n_sides_in_omega0.local_side_in_patch = 3 * ones(2 * number_of_star_branches, 1);
+
+    defeaturing_data = decompose_into_single_defeaturing_terms(defeaturing_data, problem_data);
 end
