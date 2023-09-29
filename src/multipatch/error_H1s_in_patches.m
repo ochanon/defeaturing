@@ -47,10 +47,10 @@ function error_H1s = error_H1s_in_patches(msh1, space1, u1, patches1, ...
     [grad_u1_in_patches, msh_patches] = compute_gradient_in_patches(msh1, space1, u1, patches1);
     grad_u2_in_patches = compute_gradient_in_patches(msh2, space2, u2, patches2);
     
-    quadrature_weights = msh_patches.quad_weights .* msh_patches.jacdet;
+    weights_times_jacdet = msh_patches.quad_weights .* msh_patches.jacdet;
     grad_error_squared = reshape(sum((grad_u2_in_patches - grad_u1_in_patches).^2, 1), ...
                                  [msh_patches.nqn, msh_patches.nel]);
-    error_H1s_per_element_squared = sum(grad_error_squared .* quadrature_weights);
+    error_H1s_per_element_squared = sum(grad_error_squared .* weights_times_jacdet);
 
     error_H1s = sqrt(sum(error_H1s_per_element_squared));
 end
