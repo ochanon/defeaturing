@@ -9,7 +9,8 @@ This repository contains most of the numerical illustrations presented in the fo
 https://doi.org/10.48550/arXiv.2007.11525)
 - [AC2023+] "Analysis-aware defeaturing of complex geometries with Neumann features"\
     &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;by Pablo Antolín and Ondine Chanon\
-    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Under review for publication.\
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;in _International Journal for Numerical Methods in Engineering_, e7380 (2023).\
+    &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;Journal article (Open Access): [https://doi.org/10.1142/S0218202522500099](https://doi.org/10.1002/nme.7380)\
     &emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;arXiv (Open Access): [https://doi.org/10.48550/arXiv.2212.03141](https://doi.org/10.48550/arXiv.2212.03141)
 
 
