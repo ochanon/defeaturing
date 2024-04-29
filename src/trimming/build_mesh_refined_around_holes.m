@@ -20,7 +20,7 @@
 %
 % OUTPUT:
 %
-%  geo_name:    
+%  geo_name:    the tensor-product mesh, locally refined around the holes
 %
 % Copyright (C) 2024 Ondine Chanon
 %
