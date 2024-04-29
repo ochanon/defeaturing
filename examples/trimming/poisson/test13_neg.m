@@ -22,6 +22,7 @@ defeatured_problem_data.c_diff = @(x, y) ones(size(x));
 defeatured_problem_data.g = @(x, y, ind) zeros(size(x));
 defeatured_problem_data.f = @(x, y) ones(size(x)); 
 defeatured_problem_data.h = @(x, y, ind) zeros(size(x));
+defeatured_problem_data.hfun = defeatured_problem_data.h;
 
 defeatured_boundaries = 5;
 defeatured_problem_data.nmnn_sides = []; 
@@ -31,15 +32,41 @@ defeatured_problem_data.geo_name = build_geometry(degree, num_elements);
 exact_problem_data = defeatured_problem_data;
 exact_problem_data.weak_drchlt_sides = []; 
 exact_problem_data.nmnn_sides = 5; 
-exact_problem_data.hfun = defeatured_problem_data.h;
+
+defeaturing_data.defeatured_boundaries_in_exact_domain = defeatured_boundaries;
+defeaturing_data.c_diff = exact_problem_data.c_diff;
+defeaturing_data.neumann_function = @(varargin) exact_problem_data.g(varargin{1:end-1}, defeatured_boundaries(varargin{end}));
 
 
 %% Main
 % 1) SOLVE THE DEFEATURED PROBLEM
-[omega_0, msh_cart, space, u_0] = solve_laplace (defeatured_problem_data, method_data);
+%    a) Define the closed trimming loop which does not trim away anything
+loops_0 = struct();
+loops_0.segments{1}.curve = nrbline([0, 0], [1, 0]);
+loops_0.segments{1}.label = 3;
+loops_0.segments{2}.curve = nrbline([1, 0], [1, 1]);
+loops_0.segments{2}.label = 2;
+loops_0.segments{3}.curve = nrbline([1, 1], [0, 1]);
+loops_0.segments{3}.label = 4;
+loops_0.segments{4}.curve = nrbline([0, 1], [0, 0]);
+loops_0.segments{4}.label = 1;
+loops_0.tool_type = 3;
+
+%    b) Define trimming parameters
+deg_reparam = degree+1; % degree of the reparametrization
+n_elem_reparam = 2; % number of tiles per element 
+n_refs = 0; % refinements of the original parametrization 
+
+%    c) Execute the (empty) trimming process
+method_data.reparam = ref_trimming_reparameterization_2D(n_refs, defeatured_problem_data.geo_name, ...
+                                                         {loops_0}, deg_reparam, n_elem_reparam);
+
+%    c) Solve the defeatured problem
+[~, msh_0, space_0, u_0] = solve_laplace_trimming(defeatured_problem_data, method_data);
 
 % 2) BUILD THE EXACT GEOMETRY
-%    a) Define the closed trimming looploops{1} = struct();
+%    a) Define the closed trimming loop
+loops{1} = struct();
 loops{1}.segments{1}.curve = nrbline([0,0], [1,0]);
 loops{1}.segments{1}.label = 3;
 loops{1}.segments{2}.curve = nrbline([1,0], [1,1]);
@@ -54,30 +81,27 @@ loops{2}.segments{1}.label = defeatured_boundaries(1);
 loops{2}.segments{1}.curve = nrbcirc(radiuses(1,1), [0.5,0.1]);
 loops{2}.tool_type = 3;
 
-%    b) Define trimming parameters
-deg_reparam = degree+1; % degree of the reparametrization
-n_elem_reparam = 2; % number of tiles per element 
-n_refs = 0; % refinements of the original parametrization 
-
-%    c) Execute the trimming process
+%    b) Execute the trimming process
 method_data.reparam = ref_trimming_reparameterization_2D(n_refs, exact_problem_data.geo_name, ...
                                                          loops, deg_reparam, n_elem_reparam);
 
 % 3) SOLVE THE (TRIMMED) EXACT PROBLEM
-[~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming(exact_problem_data, method_data);
+[~, msh_trimmed, sp_trimmed, u_ex] = solve_laplace_trimming(exact_problem_data, method_data);
 
 % 4) COMPUTE ERROR AND ESTIMATOR
-[estimator, measure_of_gamma, error_H1s_boundary_representation] = est_negative(u_0, msh_trimmed, sp_trimmed, ...
-                                                                        exact_problem_data.g, defeatured_boundaries, u);
-error_H1s = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
-norm_of_u = errh1s_negative (zeros(size(u_0)), msh_trimmed, sp_trimmed, u);
-relative_error_H1s = error_H1s./norm_of_u;
+[estimator, measure_of_gamma] = estimate_defeaturing_error_H1s(defeaturing_data, space_0, u_0, msh_trimmed);
+error_H1s = defeaturing_error_H1s(space_0, u_0, msh_trimmed, sp_trimmed, u_ex);
+error_H1s_boundary_representation = defeaturing_error_H1s_boundary_representation(defeaturing_data,...
+                                                space_0, u_0, msh_trimmed, sp_trimmed, u_ex);
+
+norm_of_u_ex = defeaturing_error_H1s(space_0, zeros(size(u_0)), msh_trimmed, sp_trimmed, u_ex);
+relative_error_H1s = error_H1s ./ norm_of_u_ex;
 
 
 %% Display and save the results
 if saveResults
     save(filename, 'estimator', 'measure_of_gamma', 'error_H1s_boundary_representation',...
-         'error_H1s', 'norm_of_u', 'relative_error_H1s')
+         'error_H1s', 'norm_of_u_ex', 'relative_error_H1s')
 end
 if plotExactGeometry
     plot_trimmed_geometry(method_data.reparam); 
@@ -88,7 +112,7 @@ end
 
 fprintf('    * Estimator                                        = %e \n', estimator)
 fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_H1s)
-fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_H1s)
+fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', relative_error_H1s)
 fprintf('    * Effectivity index                                = %f \n', estimator/error_H1s)
 
 

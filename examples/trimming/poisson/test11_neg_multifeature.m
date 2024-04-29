@@ -3,14 +3,18 @@ close all
 clc
 
 % -- Test reproducing [BCV2022], Section 6.1.2, and [AC2023+], Section 6.1.1 --
+% -- NOTE: A small mistake had been found in the code used to produce the results of
+%          [BCV2022, AC2023+], so the results produced here are slightly different. 
+%          However, the order of magnitude of the results and their interpretation 
+%          remained unchanged.
 
 filename = 'results/test11_neg_multifeature';
 saveResults = false;
 plotExactGeometry = false; % Warning: drawing the geometry may take very long if the number of elements is high.
 
 %% Set problem data
-% -- To reproduce [BCV2022], Section 6.1.2, choose 'circles' below. --
-% -- To reproduce [AC2023+], Section 6.1.1, choose the type of feature you want to test. -- 
+% -- To reproduce [BCV2022], Section 6.1.2 (see NOTE above), choose 'circles' below. --
+% -- To reproduce [AC2023+], Section 6.1.1 (see NOTE above), choose the type of feature you want to test. -- 
 feature_type = 'circles';
 % feature_type = 'squares';
 % --
@@ -22,31 +26,56 @@ degree = 3;
 num_elements = 16;
 
 method_data.degree = [degree degree];
-method_data.regularity = [degree degree]-1;
-method_data.nsub = [0 0]; 
-method_data.nquad = [degree degree]+5;
+method_data.regularity = [degree degree] - 1;
+method_data.nsub = [1 1];
+method_data.nquad = [degree degree] + 5;
 
 beta = 8;
 defeatured_problem_data.c_diff = @(x, y) ones(size(x));
 defeatured_problem_data.g = @(x, y, ind) neumann_function(x, y, ind, beta); 
 defeatured_problem_data.h = @(x, y, ind) exp(-beta * (x + y)); 
 defeatured_problem_data.f = @(x, y) -2 * beta^2 * exp(-beta * (x + y)); 
+defeatured_problem_data.hfun = defeatured_problem_data.h;
 
 defeatured_boundaries = [5 6];
 defeatured_problem_data.nmnn_sides = [2 4]; 
 defeatured_problem_data.drchlt_sides = [1 3]; 
-defeatured_problem_data.geo_name = buildmesh_multipleholes(num_elements, ...
+defeatured_problem_data.geo_name = build_mesh_refined_around_holes(num_elements, ...
    centers, radiuses, method_data.degree);
 
 exact_problem_data = defeatured_problem_data;
 exact_problem_data.weak_drchlt_sides = []; 
 exact_problem_data.nmnn_sides = [2 4 defeatured_boundaries]; 
-exact_problem_data.hfun = defeatured_problem_data.h;
 
+defeaturing_data.defeatured_boundaries_in_exact_domain = defeatured_boundaries;
+defeaturing_data.c_diff = exact_problem_data.c_diff;
+defeaturing_data.neumann_function = @(varargin) exact_problem_data.g(varargin{1:end-1}, defeatured_boundaries(varargin{end}));
 
 %% Main
+% Define trimming parameters
+deg_reparam = degree + 1; % degree of the reparametrization
+n_elem_reparam = 2; % number of tiles per element 
+n_refs = 0; % refinements of the original parametrization 
+
 % 1) SOLVE THE DEFEATURED PROBLEM
-[omega_0, msh_cart, space, u_0] = solve_laplace (defeatured_problem_data, method_data);
+%    a) Define the closed trimming loop which does not trim away anything
+loops_defeatured = struct();
+loops_defeatured.segments{1}.curve = nrbline([0, 0], [1, 0]);
+loops_defeatured.segments{1}.label = 3;
+loops_defeatured.segments{2}.curve = nrbline([1, 0], [1, 1]);
+loops_defeatured.segments{2}.label = 2;
+loops_defeatured.segments{3}.curve = nrbline([1, 1], [0, 1]);
+loops_defeatured.segments{3}.label = 4;
+loops_defeatured.segments{4}.curve = nrbline([0, 1], [0, 0]);
+loops_defeatured.segments{4}.label = 1;
+loops_defeatured.tool_type = 3;
+
+%    b) Execute the (empty) trimming process
+method_data.reparam = ref_trimming_reparameterization_2D(n_refs, defeatured_problem_data.geo_name, ...
+                                                         {loops_defeatured}, deg_reparam, n_elem_reparam);
+
+%    c) Solve the defeatured problem
+[~, msh_0, space_0, u_0] = solve_laplace_trimming(defeatured_problem_data, method_data);
 
 % 2) BUILD THE EXACT GEOMETRY
 %    a) Define the closed trimming loop
@@ -87,30 +116,25 @@ end
 loops{2}.tool_type = 3;
 loops{3}.tool_type = 3;
 
-%    b) Define trimming parameters
-deg_reparam = degree + 1; % degree of the reparametrization
-n_elem_reparam = 2; % number of tiles per element 
-n_refs = 0; % refinements of the original parametrization 
-
-%    c) Execute the trimming process
+%    b) Execute the trimming process
 method_data.reparam = ref_trimming_reparameterization_2D(n_refs, ...
     exact_problem_data.geo_name, loops, deg_reparam, n_elem_reparam);
 
 % 3) SOLVE THE (TRIMMED) EXACT PROBLEM
-[~, msh_trimmed, sp_trimmed, u] = solve_laplace_trimming(exact_problem_data, method_data);
+[~, msh_trimmed, sp_trimmed, u_ex] = solve_laplace_trimming(exact_problem_data, method_data);
 
 % 4) COMPUTE ERROR AND ESTIMATOR
-[estimators, measures_of_gamma, error_H1s_boundary_representation] = ...
-    est_negative (u_0, msh_trimmed, sp_trimmed, exact_problem_data.g, defeatured_boundaries, u);
-error_H1s = errh1s_negative (u_0, msh_trimmed, sp_trimmed, u);
-norm_of_u = errh1s_negative (zeros(size(u_0)), msh_trimmed, sp_trimmed, u);
-relative_error_H1s = error_H1s./norm_of_u;
-
+[estimators, measure_of_gammas] = estimate_defeaturing_error_H1s(defeaturing_data, space_0, u_0, msh_trimmed);
+error_H1s = defeaturing_error_H1s(space_0, u_0, msh_trimmed, sp_trimmed, u_ex);
+error_H1s_boundary_representation = defeaturing_error_H1s_boundary_representation(defeaturing_data,...
+                                                space_0, u_0, msh_trimmed, sp_trimmed, u_ex);
+norm_of_u_ex = defeaturing_error_H1s(space_0, zeros(size(u_0)), msh_trimmed, sp_trimmed, u_ex);
+relative_error_H1s = error_H1s ./ norm_of_u_ex;
 
 %% Display and save the results
 if saveResults
-    save(filename, 'estimators', 'measures_of_gamma', 'error_H1s_boundary_representation',...
-         'error_H1s', 'norm_of_u', 'relative_error_H1s')
+    save(filename, 'estimators', 'measure_of_gammas', 'error_H1s_boundary_representation',...
+         'error_H1s', 'norm_of_u_ex', 'relative_error_H1s')
 end
 if plotExactGeometry
     plot_trimmed_geometry(method_data.reparam); 
@@ -124,7 +148,7 @@ fprintf('    * Estimator for F_1 (small hole)                   = %e \n', estima
 fprintf('    * Estimator for F_2 (large hole)                   = %e \n', estimators(2))
 fprintf('    * Overall estimator                                = %e \n', norm(estimators))
 fprintf('    * Defeaturing error |u-u_0|_{1,Omega}              = %e \n', error_H1s)
-fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', error_H1s)
+fprintf('    * Relative error |u-u_0|_{1,Omega} / |u|_{1,Omega} = %e \n', relative_error_H1s)
 fprintf('    * Effectivity index                                = %f \n', norm(estimators)/error_H1s)
 
 
