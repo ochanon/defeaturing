@@ -1,5 +1,5 @@
 % DEFEATURING_ERROR_H1S_BOUNDARY_REPRESENTATION: Evaluate the defeaturing error in the H1-semi norm,
-% for a geometry with a single (negative, positive or complex) feature, using the boundary representation 
+% for a multipatch geometry with a single (negative, positive or complex) feature, using the boundary representation 
 % of the error in [BCV2022]. The notation used corresponds to the one in [BCV2022].
 %
 % CALL:
@@ -42,7 +42,7 @@
 %
 % OUTPUT:
 %
-%     error_H1s:             defeaturing error in H^1 seminorm of Omega
+%     error_H1s:             defeaturing error in the H^1 seminorm of Omega
 %
 % Copyright (C) 2023 Ondine Chanon
 %

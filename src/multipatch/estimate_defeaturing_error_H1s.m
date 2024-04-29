@@ -1,5 +1,6 @@
 % ESTIMATE_DEFEATURING_ERROR_H1S: computes the estimator of the energy norm
-% of the defeaturing error given in [BCV2022]. 
+% of the defeaturing error given in [BCV2022] for a multipatch geometry with a 
+% single (negative, positive or complex) feature.
 %
 % CALL:
 % 

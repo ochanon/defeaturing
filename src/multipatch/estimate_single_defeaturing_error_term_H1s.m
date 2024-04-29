@@ -1,6 +1,7 @@
 % ESTIMATE_SINGLE_DEFEATURING_ERROR_TERM_H1S: computes one term of the
 % estimator of the energy norm of the defeaturing error given in [BCV2022],
-% correponding to one of the boundaries gamma_n, gamma_r or gamma_0p. 
+% correponding to one of the boundaries gamma_n, gamma_r or gamma_0p, for a 
+% multipatch geometry.
 %
 % CALL:
 % 

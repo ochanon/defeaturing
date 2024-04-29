@@ -1,5 +1,5 @@
 % DEFEATURING_ERROR_H1S: Evaluate the defeaturing error in the H1-semi norm,
-% for a geometry with a single (negative, positive or complex) feature.
+% for a multipatch geometry with a single (negative, positive or complex) feature.
 % The notation used corresponds to the one in [BCV2022].
 %
 % CALL:
@@ -33,9 +33,9 @@
 %
 % OUTPUT:
 %
-%     error_H1s:             defeaturing error in H^1 seminorm of Omega
-%     error_H1s_omega_star:  defeaturing error in H^1 seminorm of Omega^*
-%     error_H1s_Fp:          defeaturing error in H^1 seminorm of the positive part of the feature, F_p
+%     error_H1s:             defeaturing error in the H^1 seminorm of Omega
+%     error_H1s_omega_star:  defeaturing error in the H^1 seminorm of Omega^*
+%     error_H1s_Fp:          defeaturing error in the H^1 seminorm of the positive part of the feature, F_p
 %
 % Copyright (C) 2023 Ondine Chanon
 %
